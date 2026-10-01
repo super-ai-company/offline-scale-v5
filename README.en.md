@@ -47,7 +47,7 @@ For Feie Cloud, bind a receipt printer in the matching regional developer portal
 flutter pub get
 flutter analyze
 flutter test
-flutter build apk --release
+flutter build apk --release --flavor website
 ```
 
 Verified build environment: Flutter 3.47.5 / Dart 3.13.4, existing Gradle 8.14 / AGP 8.11.1, Java 17 compatible bytecode. Output: `build/app/outputs/flutter-apk/app-release.apk`.

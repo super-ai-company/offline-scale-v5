@@ -55,10 +55,19 @@ class UpdateService {
   static const channel = MethodChannel('cashier/update');
   static const api =
       'https://api.github.com/repos/super-ai-company/offline-scale-v5/releases/latest';
+  Future<bool> isPlayDistribution() async =>
+      await channel.invokeMethod<String>('distribution') == 'play';
+
+  Future<bool> openStore() async =>
+      await channel.invokeMethod<bool>('openStore') ?? false;
+
   Future<String> installedVersion() async =>
       (await channel.invokeMethod<String>('version'))!;
 
   Future<AppUpdate?> check(String current) async {
+    if (await isPlayDistribution()) {
+      throw UnsupportedError('Play updates are managed by the store');
+    }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);
     try {
@@ -90,12 +99,16 @@ class UpdateService {
     }
   }
 
-  Future<bool> install(AppUpdate update) async =>
-      await channel.invokeMethod<bool>('install', {
-        'url': update.url,
-        'sha256': update.sha256,
-        'version': update.version,
-        'size': update.size,
-      }) ??
-      false;
+  Future<bool> install(AppUpdate update) async {
+    if (await isPlayDistribution()) {
+      throw UnsupportedError('Play cannot install website APKs');
+    }
+    return await channel.invokeMethod<bool>('install', {
+          'url': update.url,
+          'sha256': update.sha256,
+          'version': update.version,
+          'size': update.size,
+        }) ??
+        false;
+  }
 }

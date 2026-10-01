@@ -26,4 +26,6 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - name: Compile Android release (CI signing is not the distributed signer)
-        run: flutter build apk --release
+        run: flutter build apk --release --flavor website
+      - name: Compile Play candidate (not approved for upload)
+        run: flutter build appbundle --release --flavor play

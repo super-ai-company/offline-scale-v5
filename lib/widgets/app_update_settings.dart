@@ -14,6 +14,23 @@ class _AppUpdateSettingsState extends State<AppUpdateSettings> {
   final _service = UpdateService();
   bool _busy = false;
   String _message = '';
+  bool _play = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDistribution();
+  }
+
+  Future<void> _loadDistribution() async {
+    try {
+      final play = await _service.isPlayDistribution();
+      if (mounted) setState(() => _play = play);
+    } catch (_) {
+      // Native methods also enforce channel separation.
+    }
+  }
+
   Future<void> _check(bool zh) async {
     if (!widget.allowed || _busy) return;
     setState(() {
@@ -21,6 +38,21 @@ class _AppUpdateSettingsState extends State<AppUpdateSettings> {
       _message = zh ? '正在检查…' : 'Checking…';
     });
     try {
+      if (await _service.isPlayDistribution()) {
+        final opened = await _service.openStore();
+        if (mounted) {
+          setState(
+            () => _message = opened
+                ? (zh
+                      ? '请在 Google Play 中检查和安装更新'
+                      : 'Check and install updates in Google Play')
+                : (zh
+                      ? '无法打开 Google Play，请检查设备是否支持商店'
+                      : 'Cannot open Google Play on this device'),
+          );
+        }
+        return;
+      }
       final current = await _service.installedVersion();
       final update = await _service.check(current);
       if (!mounted) return;
@@ -103,7 +135,11 @@ class _AppUpdateSettingsState extends State<AppUpdateSettings> {
             ),
             const SizedBox(height: 12),
             Text(
-              zh
+              _play
+                  ? (zh
+                        ? '此版本通过 Google Play 更新。断网不影响本地收银与打印。'
+                        : 'Updates are managed by Google Play. Offline cashier and local printing remain available.')
+                  : zh
                   ? '仅手动检查时联网；从公司 GitHub 获取正式版。断网不影响本地收银与打印。'
                   : 'Manual checks only. Stable releases from company GitHub. Offline cashier and local printing remain available.',
             ),
@@ -117,7 +153,11 @@ class _AppUpdateSettingsState extends State<AppUpdateSettings> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.system_update),
-              label: Text(zh ? '检查更新' : 'Check for updates'),
+              label: Text(
+                _play
+                    ? (zh ? '前往 Google Play' : 'Open Google Play')
+                    : (zh ? '检查更新' : 'Check for updates'),
+              ),
             ),
             if (!widget.allowed)
               Text(

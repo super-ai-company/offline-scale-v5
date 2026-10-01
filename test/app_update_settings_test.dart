@@ -16,8 +16,8 @@ void main() {
           .setMockMethodCallHandler(const MethodChannel('cashier/update'), (
             call,
           ) async {
-            calls++;
-            return '1.2.2';
+            if (call.method != 'distribution') calls++;
+            return 'website';
           });
       addTearDown(
         () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
