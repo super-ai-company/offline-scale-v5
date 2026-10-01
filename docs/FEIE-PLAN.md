@@ -8,7 +8,7 @@ Keep weighing, menu management, cart and USB/SUNMI printing offline. Add an opti
 
 ## 已实施 / Implemented
 
-1. 设置选择 USB/SUNMI 或飞鹅云；支持中国、亚太、欧洲站。地区必须与开发者账号一致。
+1. 默认 USB/SUNMI 本地优先，飞鹅独立开关默认关闭；本地连接失败且未发送时才可备用；支持中国、亚太、欧洲站。地区必须与开发者账号一致。
 2. USER、9 位 SN 和 UKEY 配置；UKEY 使用 Android Keystore AES-GCM 加密保存，禁止 Android 自动备份；无内置账号或密钥。
 3. 使用 HTTPS、2026 年独立接口 URL、表单 POST 和 SHA1(USER + UKEY + UNIX timestamp)。不重定向、不记录认证参数或原始云端错误。
 4. 状态查询、测试小票、最后一单出纸状态查询。打印机须先在对应飞鹅开发者后台绑定；应用不自动添加或删除平台设备。
@@ -16,12 +16,12 @@ Keep weighing, menu management, cart and USB/SUNMI printing offline. Add an opti
 6. 请求前持久化防重发标记；超时、断线、异常回复和进程中断保持标记。并发提交互斥；无自动重试。结果不明时用户先查飞鹅后台和实体纸张，再确认解除保护。
 7. 商品名和店名清理控制标签，金额沿用购物车的分币舍入，单份小票上限 5000 UTF-8 字节。
 
-Settings select the backend and account region. UKEY is encrypted at rest by Android Keystore. The adapter uses the documented split HTTPS endpoints, signed form POSTs, bounded timeouts and response sizes. Status checks precede submission. A durable resend guard and in-process mutex prevent blind retry after lost replies; acceptance and paper confirmation are distinct states. Cloud device binding stays in the official portal.
+Settings always prioritize local USB/SUNMI. Optional cloud backup is disabled by default and only runs after local connection failure before sending a ticket. Uncertain local writes retain a durable guard and never automatically transfer to cloud. Settings select the account region. UKEY is encrypted at rest by Android Keystore. The adapter uses the documented split HTTPS endpoints, signed form POSTs, bounded timeouts and response sizes. Status checks precede submission. A durable resend guard and in-process mutex prevent blind retry after lost replies; acceptance and paper confirmation are distinct states. Cloud device binding stays in the official portal.
 
 ## 使用流程 / Setup
 
 1. 在对应地区的飞鹅开发者后台确认小票机已绑定 USER。打印机标签 KEY 与账号 UKEY 是两种不同凭据。
-2. 设置 → 打印设置 → 飞鹅云，选择账号地区，填写 USER、UKEY、SN。
+2. 设置 → 打印设置 → 启用飞鹅备用打印，选择账号地区，填写 USER、UKEY、SN。
 3. 检查状态 → 打印测试小票 → 查询最后一张云小票；核对纸张。
 4. 保存设置后收银打印。关闭打印开关可以继续离线完成销售；结果不明订单须先人工核对，避免重复纸张。
 

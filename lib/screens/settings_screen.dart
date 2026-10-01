@@ -1,3 +1,4 @@
+import '../models/sale_precision.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,10 +24,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _feieUserCtrl = TextEditingController();
   final _feieSnCtrl = TextEditingController();
   final _feieKeyCtrl = TextEditingController();
-  String _backend = 'usb';
+  bool _feieEnabled = false;
   String _region = 'jp';
   bool _busy = false;
   String _printerMessage = '';
+  int _weightDigits = 3;
+  int _moneyDigits = 2;
+  bool _truncate = false;
 
   FeieConfig get _feieConfig => FeieConfig(
     user: _feieUserCtrl.text.trim(),
@@ -50,10 +54,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _shopCtrl.text = savedShopName == 'ร้านอาหาร' ? '' : savedShopName ?? '';
     _defaultPriceCtrl.text = (prefs.getDouble('default_weight_price') ?? 1)
         .toStringAsFixed(2);
+    final precision = SalePrecision.fromPrefs(prefs);
     setState(() {
+      _weightDigits = precision.weightDigits;
+      _moneyDigits = precision.moneyDigits;
+      _truncate = precision.truncate;
       _printEnabled = prefs.getBool('print_enabled') ?? true;
       _productCameraEnabled = prefs.getBool('product_camera_enabled') ?? false;
-      _backend = prefs.getString('printer_backend') == 'feie' ? 'feie' : 'usb';
+      _feieEnabled = prefs.getBool('feie_enabled') ?? false;
       _region = prefs.getString('feie_region') ?? 'jp';
       _feieUserCtrl.text = prefs.getString('feie_user') ?? '';
       _feieSnCtrl.text = prefs.getString('feie_sn') ?? '';
@@ -62,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final config = await FeieConfig.load();
       if (mounted) _feieKeyCtrl.text = config.ukey;
     } catch (_) {
-      if (mounted && _backend == 'feie') {
+      if (mounted && _feieEnabled) {
         setState(() => _printerMessage = 'feie_key_error');
       }
     }
@@ -90,7 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    if (_backend == 'feie') {
+    if (_feieEnabled) {
       if (!mounted) return;
       if (!_feieConfig.valid) {
         TopToast.show(context, lp.tr('feie_invalid'), type: ToastType.error);
@@ -109,7 +117,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
     }
-    await prefs.setString('printer_backend', _backend);
+    await prefs.setInt('weight_digits', _weightDigits);
+    await prefs.setInt('money_digits', _moneyDigits);
+    await prefs.setString('decimal_mode', _truncate ? 'truncate' : 'round');
+    await prefs.setBool('feie_enabled', _feieEnabled);
+    await prefs.remove('printer_backend');
     await prefs.setString('serial_path', path);
     await prefs.setInt('serial_rate', rate);
     await prefs.setString('shop_name', _shopCtrl.text.trim());
@@ -175,12 +187,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _resolveUncertain(LocaleProvider lp) async {
+  Future<void> _resolveUncertain(
+    LocaleProvider lp, {
+    bool local = false,
+  }) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(lp.tr('feie_resolve')),
-        content: Text(lp.tr('feie_resolve_hint')),
+        title: Text(lp.tr(local ? 'local_resolve' : 'feie_resolve')),
+        content: Text(
+          lp.tr(local ? 'local_resolve_hint' : 'feie_resolve_hint'),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -195,7 +212,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('feie_uncertain', false);
+    await prefs.setBool(
+      local ? 'local_print_uncertain' : 'feie_uncertain',
+      false,
+    );
     if (mounted) setState(() => _printerMessage = 'feie_resolved');
   }
 
@@ -292,6 +312,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 24),
               _Section(
+                title: lp.tr('precision_settings'),
+                children: [
+                  Text(lp.tr('precision_hint')),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    key: ValueKey('weight$_weightDigits'),
+                    initialValue: _weightDigits,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: lp.tr('weight_digits'),
+                    ),
+                    items: [
+                      for (var n = 0; n <= 3; n++)
+                        DropdownMenuItem(value: n, child: Text('$n')),
+                    ],
+                    onChanged: (v) => setState(() => _weightDigits = v!),
+                  ),
+                  DropdownButtonFormField<int>(
+                    key: ValueKey('money$_moneyDigits'),
+                    initialValue: _moneyDigits,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: lp.tr('money_digits'),
+                    ),
+                    items: [
+                      for (var n = 0; n <= 2; n++)
+                        DropdownMenuItem(value: n, child: Text('$n')),
+                    ],
+                    onChanged: (v) => setState(() => _moneyDigits = v!),
+                  ),
+                  DropdownButtonFormField<bool>(
+                    key: ValueKey('mode$_truncate'),
+                    initialValue: _truncate,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: lp.tr('decimal_mode'),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: false,
+                        child: Text(lp.tr('decimal_round')),
+                      ),
+                      DropdownMenuItem(
+                        value: true,
+                        child: Text(lp.tr('decimal_truncate')),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => _truncate = v!),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${lp.tr('precision_example')}: 1.235 kg → ${SalePrecision(weightDigits: _weightDigits, moneyDigits: _moneyDigits, truncate: _truncate).weightText(1.235)} kg; 12.55 THB → ${SalePrecision(weightDigits: _weightDigits, moneyDigits: _moneyDigits, truncate: _truncate).moneyText(12.55)} THB',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _Section(
                 title: lp.tr('printer_settings'),
                 children: [
                   SwitchListTile(
@@ -301,31 +378,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: _printEnabled,
                     onChanged: (value) => setState(() => _printEnabled = value),
                   ),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _backend,
-                    decoration: InputDecoration(
-                      labelText: lp.tr('printer_backend'),
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'usb',
-                        child: Text(lp.tr('printer_usb')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'feie',
-                        child: Text(lp.tr('printer_feie')),
-                      ),
-                    ],
+                  Text(lp.tr('printer_local_first')),
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _resolveUncertain(lp, local: true),
+                    child: Text(lp.tr('local_resolve')),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(lp.tr('feie_enabled')),
+                    subtitle: Text(lp.tr('feie_fallback_hint')),
+                    value: _feieEnabled,
                     onChanged: _busy
                         ? null
-                        : (v) => setState(() => _backend = v!),
+                        : (v) => setState(() => _feieEnabled = v),
                   ),
-                  if (_backend == 'feie') ...[
+                  if (_feieEnabled) ...[
                     const SizedBox(height: 16),
                     Text(lp.tr('feie_hint')),
                     DropdownButtonFormField<String>(
                       isExpanded: true,
+                      key: ValueKey('region$_region'),
                       initialValue: _region,
                       decoration: InputDecoration(
                         labelText: lp.tr('feie_region'),

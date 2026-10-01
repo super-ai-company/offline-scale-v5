@@ -63,3 +63,9 @@ The distributed artifact uses the existing local signer. CI-generated APKs have 
 - 飞鹅 58 mm 机：应用内真实在线查询、加密设置保存、单次中英文测试小票云端接收、查询最后一单“打印完成”均通过。云端报告不替代人工纸张核对。
 
 The distributed APK was installed in place on the current scale with existing settings preserved. Stable weight and cart arithmetic were verified without checkout. The app saved Feie configuration, submitted one bilingual test and received a cloud printed confirmation. Physical paper inspection and tare/zero acceptance remain pending. Real account, printer identifiers and private device screenshots are withheld from this public record.
+
+## v1.2.1 更新 / Update
+
+36 项回归通过、分析无问题、release 构建通过。增加5项本地优先/默认关云/本地发送不明禁止转云测试，以及5项金额/重量精度与票据快照测试。重量默认3位、金额默认2位，支持四舍五入与截尾。旧云模式选择不会自动打开新备用开关。
+
+真实商品0.720kg×5242.00THB/kg=3774.24THB：USB位图/切纸返回true，飞鹅订单查询printed，用户确认两台纸张中文/金额/切纸正常（该商品票实测发生在1.2.0）。Wi-Fi关闭的实测依用户指令留待其手动进行；不因此声称已实测断网。新1.2.1的整数精度真机结果见发布说明。

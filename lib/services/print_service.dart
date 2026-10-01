@@ -7,7 +7,13 @@ import 'feie_service.dart';
 class PrintService {
   static final PrintService _instance = PrintService._();
   factory PrintService() => _instance;
-  PrintService._();
+  PrintService._() : _cloudLoader = _defaultCloudLoader;
+  PrintService.forTesting({required Future<FeieService> Function() cloudLoader})
+    : _cloudLoader = cloudLoader;
+  final Future<FeieService> Function() _cloudLoader;
+  static Future<FeieService> _defaultCloudLoader() async =>
+      FeieService(await FeieConfig.load());
+  bool _localConnected = false;
 
   static const _method = MethodChannel('cashier/print');
 
@@ -18,14 +24,13 @@ class PrintService {
   /// 连接内置或 USB 打印机
   Future<bool> connect() async {
     try {
+      _localConnected = await _method.invokeMethod<bool>('openPort') ?? false;
+      _connected = _localConnected;
+      if (_localConnected) return true;
       final prefs = await SharedPreferences.getInstance();
-      if (prefs.getString('printer_backend') == 'feie') {
-        _connected =
-            await FeieService(await FeieConfig.load()).printerStatus() == 1;
-        return _connected;
+      if (prefs.getBool('feie_enabled') == true) {
+        _connected = await (await _cloudLoader()).printerStatus() == 1;
       }
-      final result = await _method.invokeMethod<bool>('openPort');
-      _connected = result ?? false;
       return _connected;
     } catch (_) {
       _connected = false;
@@ -41,6 +46,7 @@ class PrintService {
       // 设备已断开时，仍要清理本地连接状态。
     }
     _connected = false;
+    _localConnected = false;
   }
 
   /// 打印收据
@@ -55,8 +61,15 @@ class PrintService {
     resultKey = 'print_fail';
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (prefs.getString('printer_backend') == 'feie') {
-        final service = FeieService(await FeieConfig.load());
+      if (prefs.getBool('local_print_uncertain') == true) {
+        resultKey = 'print_local_uncertain';
+        return false;
+      }
+      // A local connection attempt happens before any secret or network access.
+      _localConnected = await _method.invokeMethod<bool>('openPort') ?? false;
+      if (!_localConnected) {
+        if (prefs.getBool('feie_enabled') != true) return false;
+        final service = await _cloudLoader();
         if (prefs.getBool('feie_uncertain') == true) {
           resultKey = 'feie_uncertain';
           return false;
@@ -81,12 +94,8 @@ class PrintService {
         };
         return result.state == CloudPrintState.accepted;
       }
-      // 如果未连接，先尝试连接
-      if (!_connected) {
-        final ok = await connect();
-        if (!ok) return false;
-      }
 
+      await prefs.setBool('local_print_uncertain', true);
       final result = await _method.invokeMethod<bool>('printTicket', {
         'shopName': shopName,
         'items': items.map((e) => e.toPrintMap(language)).toList(),
@@ -94,11 +103,20 @@ class PrintService {
         'language': language,
         'totalLabel': totalLabel,
       });
-      if (result != true) _connected = false;
-      if (result == true) resultKey = 'print_success';
+      if (result != true) {
+        _connected = false;
+        _localConnected = false;
+        resultKey = 'print_local_uncertain';
+      }
+      if (result == true) {
+        await prefs.setBool('local_print_uncertain', false);
+        resultKey = 'print_success';
+      }
       return result == true;
     } catch (_) {
       _connected = false;
+      resultKey = _localConnected ? 'print_local_uncertain' : 'print_fail';
+      _localConnected = false;
       return false;
     }
   }

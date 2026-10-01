@@ -314,6 +314,7 @@ public class PrintChannel implements MethodChannel.MethodCallHandler {
         String receiptTotalLabel = (totalLabel != null && !totalLabel.trim().isEmpty())
                 ? totalLabel.trim() : "Total";
 
+        int totalDigits = 0;
         StringBuilder detail = new StringBuilder();
         detail.append(dateTime).append("\n");
         detail.append(line('-', 32)).append("\n");
@@ -324,17 +325,20 @@ public class PrintChannel implements MethodChannel.MethodCallHandler {
                 double price = num(item.get("price"));
                 double subtotal = num(item.get("subtotal"));
                 boolean byWeight = Boolean.TRUE.equals(item.get("byWeight"));
+                int wd = item.containsKey("weightDigits") ? Math.max(0, Math.min(3, (int) num(item.get("weightDigits")))) : 3;
+                int md = item.containsKey("moneyDigits") ? Math.max(0, Math.min(2, (int) num(item.get("moneyDigits")))) : 2;
+                totalDigits = Math.max(totalDigits, md);
 
                 detail.append(name).append("\n");
                 if (byWeight) {
-                    detail.append(String.format(Locale.US, "  %.3f kg × %.2f฿ = %.2f฿\n", weight, price, subtotal));
+                    detail.append(String.format(Locale.US, "  %." + wd + "f kg × %." + md + "f฿ = %." + md + "f฿\n", weight, price, subtotal));
                 } else {
-                    detail.append(String.format(Locale.US, "  x%.0f × %.2f฿ = %.2f฿\n", weight, price, subtotal));
+                    detail.append(String.format(Locale.US, "  x%.0f × %." + md + "f฿ = %." + md + "f฿\n", weight, price, subtotal));
                 }
             }
         }
         detail.append(line('-', 32)).append("\n");
-        detail.append(String.format(Locale.US, "%s: %.2f ฿\n\n", receiptTotalLabel, total));
+        detail.append(String.format(Locale.US, "%s: %." + totalDigits + "f ฿\n\n", receiptTotalLabel, total));
 
         // ③ 打出即将渲染的完整票据内容，方便核对语言和金额
         Log.d(TAG, "renderTicket title=[" + title + "]");

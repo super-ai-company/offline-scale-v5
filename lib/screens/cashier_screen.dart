@@ -1,3 +1,4 @@
+import '../models/sale_precision.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:presentation_displays/displays_manager.dart';
@@ -28,6 +29,7 @@ class _CashierScreenState extends State<CashierScreen> {
   final _db = DbService();
   final _weight = WeightService();
   final _print = PrintService();
+  SalePrecision _precision = const SalePrecision();
 
   List<MenuItem> _menuItems = [];
   final List<CartItem> _cart = [];
@@ -79,7 +81,8 @@ class _CashierScreenState extends State<CashierScreen> {
     _connectScale();
     _weightWatchdog = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_lastWeightAt != null &&
-          DateTime.now().difference(_lastWeightAt!) > const Duration(seconds: 3)) {
+          DateTime.now().difference(_lastWeightAt!) >
+              const Duration(seconds: 3)) {
         setState(() {
           _weightValid = false;
           _weightStable = false;
@@ -101,7 +104,7 @@ class _CashierScreenState extends State<CashierScreen> {
       if (mounted && displays != null && displays.length > 1) {
         final secondaryDisplay = displays[1];
         await _displayManager.showSecondaryDisplay(
-          displayId: secondaryDisplay.displayId!, 
+          displayId: secondaryDisplay.displayId!,
           routerName: "presentation",
         );
         setState(() => _hasSecondaryDisplay = true);
@@ -116,13 +119,15 @@ class _CashierScreenState extends State<CashierScreen> {
     if (!_hasSecondaryDisplay || !mounted) return;
     final lp = _localeProvider;
     if (lp == null) return;
-    
+
     final cartData = _cart.map((e) {
       return {
         'name': e.menuItem.nameFor(lp.localeStr),
         'price': e.menuItem.price,
         'weight': e.weight,
         'subtotal': e.subtotal,
+        'weightDigits': e.weightDigits,
+        'moneyDigits': e.moneyDigits,
         'isByWeight': e.menuItem.isByWeight,
       };
     }).toList();
@@ -130,13 +135,14 @@ class _CashierScreenState extends State<CashierScreen> {
     final payload = jsonEncode({
       'cart': cartData,
       'total': _total,
+      'moneyDigits': _precision.moneyDigits,
       'language': lp.localeStr,
       'welcome': lp.tr('customer_welcome'),
       'cartTitle': lp.tr('customer_cart_title'),
       'emptyCart': lp.tr('cart_empty'),
       'totalLabel': lp.tr('total'),
     });
-    
+
     _displayManager.transferDataToPresentation(payload);
   }
 
@@ -236,7 +242,10 @@ class _CashierScreenState extends State<CashierScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final enabled = prefs.getBool('print_enabled') ?? true;
-    setState(() => _printEnabled = enabled);
+    setState(() {
+      _printEnabled = enabled;
+      if (_cart.isEmpty) _precision = SalePrecision.fromPrefs(prefs);
+    });
     if (enabled) {
       _connectPrinter();
     } else {
@@ -249,8 +258,10 @@ class _CashierScreenState extends State<CashierScreen> {
   Future<void> _loadProductCameraSetting() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
-      setState(() => _productCameraEnabled =
-          prefs.getBool('product_camera_enabled') ?? false);
+      setState(
+        () => _productCameraEnabled =
+            prefs.getBool('product_camera_enabled') ?? false,
+      );
     }
   }
 
@@ -273,30 +284,34 @@ class _CashierScreenState extends State<CashierScreen> {
     if (!mounted) return;
     setState(() => _scaleConnected = ok);
     if (ok) {
-      _weightSub = _weight.weightStream.listen((data) {
-        if (!mounted) return;
-        _lastWeightAt = DateTime.now();
-        setState(() {
-          _scaleConnected = true;
-          _currentKg = data.kg;
-          _weightStable = data.stable;
-          _weightValid = data.canSell;
-          _weightIsZero = data.isZero;
-          _weightIsTare = data.isTare;
-          _scaleControlAvailable = data.valid && data.unit.toLowerCase() == 'kg';
-        });
-      }, onError: (_) {
-        if (mounted) {
+      _weightSub = _weight.weightStream.listen(
+        (data) {
+          if (!mounted) return;
+          _lastWeightAt = DateTime.now();
           setState(() {
-            _scaleConnected = false;
-            _weightValid = false;
-            _weightStable = false;
-            _weightIsZero = false;
-            _weightIsTare = false;
-            _scaleControlAvailable = false;
+            _scaleConnected = true;
+            _currentKg = data.kg;
+            _weightStable = data.stable;
+            _weightValid = data.canSell;
+            _weightIsZero = data.isZero;
+            _weightIsTare = data.isTare;
+            _scaleControlAvailable =
+                data.valid && data.unit.toLowerCase() == 'kg';
           });
-        }
-      });
+        },
+        onError: (_) {
+          if (mounted) {
+            setState(() {
+              _scaleConnected = false;
+              _weightValid = false;
+              _weightStable = false;
+              _weightIsZero = false;
+              _weightIsTare = false;
+              _scaleControlAvailable = false;
+            });
+          }
+        },
+      );
     }
   }
 
@@ -307,7 +322,10 @@ class _CashierScreenState extends State<CashierScreen> {
     setState(() => _printerConnected = ok);
   }
 
-  Future<void> _sendScaleCommand(LocaleProvider lp, {required bool tare}) async {
+  Future<void> _sendScaleCommand(
+    LocaleProvider lp, {
+    required bool tare,
+  }) async {
     if (!_scaleConnected || !_weightStable) {
       _showSnack(lp.tr('wait_for_stable_scale'), type: ToastType.error);
       return;
@@ -337,7 +355,9 @@ class _CashierScreenState extends State<CashierScreen> {
   Future<void> _recognizeProduct(LocaleProvider lp) async {
     final counts = await _db.visualSampleCounts();
     if (!mounted) return;
-    if (!counts.keys.any((id) => _menuItems.any((item) => item.id == id && !item.isQuickWeigh))) {
+    if (!counts.keys.any(
+      (id) => _menuItems.any((item) => item.id == id && !item.isQuickWeigh),
+    )) {
       _showSnack(lp.tr('ai_no_samples'), type: ToastType.error);
       return;
     }
@@ -346,7 +366,10 @@ class _CashierScreenState extends State<CashierScreen> {
       MaterialPageRoute(builder: (_) => const AiCameraScreen()),
     );
     if (embedding == null || !mounted) return;
-    final matches = await AiRecognitionService().recognize(embedding, _menuItems);
+    final matches = await AiRecognitionService().recognize(
+      embedding,
+      _menuItems,
+    );
     if (!mounted) return;
     if (matches.isEmpty) {
       _showSnack(lp.tr('ai_no_match'), type: ToastType.error);
@@ -364,13 +387,20 @@ class _CashierScreenState extends State<CashierScreen> {
               for (final match in matches)
                 ListTile(
                   title: Text(match.item.nameFor(lp.localeStr)),
-                  subtitle: Text('${lp.tr('ai_similarity')}: ${(match.similarity * 100).toStringAsFixed(0)}%'),
+                  subtitle: Text(
+                    '${lp.tr('ai_similarity')}: ${(match.similarity * 100).toStringAsFixed(0)}%',
+                  ),
                   onTap: () => Navigator.pop(dialogContext, match.item),
                 ),
             ],
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(lp.tr('cancel')))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(lp.tr('cancel')),
+          ),
+        ],
       ),
     );
     if (selected != null && mounted) _selectMenuItem(selected);
@@ -390,19 +420,39 @@ class _CashierScreenState extends State<CashierScreen> {
         _showSnack(lp.tr('pls_put_on_scale'), type: ToastType.error);
         return;
       }
-      qty = _currentKg;
+      qty = _precision.weight(_currentKg);
+      if (qty <= 0) {
+        _showSnack(lp.tr('precision_zero_weight'), type: ToastType.error);
+        return;
+      }
     } else {
       qty = _fixedQty.toDouble();
     }
 
+    final salePrice = _precision.money(_enteredPrice);
+    if (salePrice <= 0) {
+      _showSnack(lp.tr('enter_positive_price'), type: ToastType.error);
+      return;
+    }
     final subtotal = CartItem.saleSubtotal(
       byWeight: item.isByWeight,
       quantity: qty,
-      price: _enteredPrice,
+      price: salePrice,
+      weightDigits: _precision.weightDigits,
+      moneyDigits: _precision.moneyDigits,
+      truncate: _precision.truncate,
     );
 
     setState(() {
-      _cart.add(CartItem(menuItem: item.copyWith(price: _enteredPrice), weight: qty, subtotal: subtotal));
+      _cart.add(
+        CartItem(
+          menuItem: item.copyWith(price: salePrice),
+          weight: qty,
+          subtotal: subtotal,
+          weightDigits: _precision.weightDigits,
+          moneyDigits: _precision.moneyDigits,
+        ),
+      );
     });
     _syncCartToSecondaryDisplay();
   }
@@ -411,6 +461,7 @@ class _CashierScreenState extends State<CashierScreen> {
     if (_printing) return;
     setState(() => _cart.removeAt(index));
     _syncCartToSecondaryDisplay();
+    if (_cart.isEmpty) _loadPrintSetting();
   }
 
   void _clearCart() {
@@ -420,9 +471,10 @@ class _CashierScreenState extends State<CashierScreen> {
       _keypadReplaceOnNext = true;
     });
     _syncCartToSecondaryDisplay();
+    _loadPrintSetting();
   }
 
-  double get _total => _cart.fold(0.0, (sum, e) => sum + e.subtotal);
+  double get _total => _cart.fold<int>(0, (sum, e) => sum + (e.subtotal * 100).round()) / 100;
 
   Future<void> _printReceipt(LocaleProvider lp) async {
     if (_printing) return;
@@ -442,7 +494,8 @@ class _CashierScreenState extends State<CashierScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedShopName = prefs.getString('shop_name');
-      final shopName = savedShopName == null ||
+      final shopName =
+          savedShopName == null ||
               savedShopName.trim().isEmpty ||
               savedShopName == 'ร้านอาหาร'
           ? lp.tr('default_shop_name')
@@ -487,13 +540,15 @@ class _CashierScreenState extends State<CashierScreen> {
           children: [
             Expanded(
               flex: 7,
-              child: Row(children: [
-                Expanded(flex: 3, child: _buildMenuPanel(lp)),
-                const SizedBox(width: 12),
-                Expanded(flex: 4, child: _buildWeightSection(lp)),
-                const SizedBox(width: 12),
-                Expanded(flex: 3, child: _buildKeypadPanel(lp)),
-              ]),
+              child: Row(
+                children: [
+                  Expanded(flex: 3, child: _buildMenuPanel(lp)),
+                  const SizedBox(width: 12),
+                  Expanded(flex: 4, child: _buildWeightSection(lp)),
+                  const SizedBox(width: 12),
+                  Expanded(flex: 3, child: _buildKeypadPanel(lp)),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Expanded(flex: 3, child: _buildCartPanel(lp)),
@@ -505,7 +560,10 @@ class _CashierScreenState extends State<CashierScreen> {
 
   PreferredSizeWidget _buildAppBar(LocaleProvider lp) {
     return AppBar(
-      title: Text(lp.tr('app_title'), style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+      title: Text(
+        lp.tr('app_title'),
+        style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+      ),
       elevation: 0,
       backgroundColor: Colors.white,
       foregroundColor: const Color(0xFF0F172A), // Slate 900
@@ -535,14 +593,45 @@ class _CashierScreenState extends State<CashierScreen> {
             child: DropdownButton<String>(
               value: lp.localeStr,
               items: [
-                DropdownMenuItem(value: 'en', child: Text(lp.tr('lang_en'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold))),
-                DropdownMenuItem(value: 'th', child: Text(lp.tr('lang_th'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold))),
-                DropdownMenuItem(value: 'zh', child: Text(lp.tr('lang_zh'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold))),
+                DropdownMenuItem(
+                  value: 'en',
+                  child: Text(
+                    lp.tr('lang_en'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'th',
+                  child: Text(
+                    lp.tr('lang_th'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'zh',
+                  child: Text(
+                    lp.tr('lang_zh'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
               onChanged: (v) {
                 if (v != null) lp.setLocale(v);
               },
-              icon: const Icon(Icons.language, size: 18, color: Color(0xFF64748B)),
+              icon: const Icon(
+                Icons.language,
+                size: 18,
+                color: Color(0xFF64748B),
+              ),
             ),
           ),
         ),
@@ -557,7 +646,10 @@ class _CashierScreenState extends State<CashierScreen> {
           icon: const Icon(Icons.restaurant_menu_rounded),
           tooltip: lp.tr('menu_manage'),
           onPressed: () async {
-            await Navigator.push(context, MaterialPageRoute(builder: (_) => const MenuScreen()));
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MenuScreen()),
+            );
             _loadMenu();
           },
         ),
@@ -565,7 +657,10 @@ class _CashierScreenState extends State<CashierScreen> {
           icon: const Icon(Icons.settings_rounded),
           tooltip: lp.tr('settings'),
           onPressed: () async {
-            await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            );
             _loadPrintSetting();
             _loadProductCameraSetting();
             _loadDefaultPrice();
@@ -581,14 +676,23 @@ class _CashierScreenState extends State<CashierScreen> {
     final items = _menuItems.any((item) => item.isQuickWeigh)
         ? _menuItems
         : [MenuItem.quickWeigh, ..._menuItems];
-    final visibleItems = items.map((item) => item.isQuickWeigh
-        ? item.copyWith(price: _defaultPrice)
-        : item).toList();
+    final visibleItems = items
+        .map(
+          (item) =>
+              item.isQuickWeigh ? item.copyWith(price: _defaultPrice) : item,
+        )
+        .toList();
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
@@ -604,6 +708,7 @@ class _CashierScreenState extends State<CashierScreen> {
             ),
             itemCount: visibleItems.length,
             itemBuilder: (_, i) => _MenuCard(
+              precision: _precision,
               item: visibleItems[i],
               selected: _selectedItem?.id == visibleItems[i].id,
               onTap: () => _selectMenuItem(visibleItems[i]),
@@ -620,7 +725,13 @@ class _CashierScreenState extends State<CashierScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -637,53 +748,77 @@ class _CashierScreenState extends State<CashierScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(16),
-      child: Column(children: [
-        Row(children: [
-          Expanded(
-            child: Text(lp.tr('number_keypad'),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A))),
-          ),
-          TextButton.icon(
-            onPressed: () => _pressPriceKey('C'),
-            icon: const Icon(Icons.backspace_outlined),
-            label: Text(lp.tr('clear')),
-          ),
-        ]),
-        const SizedBox(height: 10),
-        Expanded(
-          child: LayoutBuilder(builder: (context, constraints) {
-            final keyWidth = (constraints.maxWidth - 16) / 3;
-            final keyHeight = (constraints.maxHeight - 24) / 4;
-            return GridView.count(
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: keyWidth / keyHeight,
-              children: [
-                for (final key in keys)
-                  FilledButton.tonal(
-                    onPressed: () => _pressPriceKey(key),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: key == '⌫'
-                          ? const Color(0xFFFFEDD5) : const Color(0xFFE0F2FE),
-                      foregroundColor: const Color(0xFF0F172A),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: Text(key,
-                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800,
-                            fontFeatures: [FontFeature.tabularFigures()])),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  lp.tr('number_keypad'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
                   ),
-              ],
-            );
-          }),
-        ),
-      ]),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _pressPriceKey('C'),
+                icon: const Icon(Icons.backspace_outlined),
+                label: Text(lp.tr('clear')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final keyWidth = (constraints.maxWidth - 16) / 3;
+                final keyHeight = (constraints.maxHeight - 24) / 4;
+                return GridView.count(
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: keyWidth / keyHeight,
+                  children: [
+                    for (final key in keys)
+                      FilledButton.tonal(
+                        onPressed: () => _pressPriceKey(key),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: key == '⌫'
+                              ? const Color(0xFFFFEDD5)
+                              : const Color(0xFFE0F2FE),
+                          foregroundColor: const Color(0xFF0F172A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          key,
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -693,106 +828,150 @@ class _CashierScreenState extends State<CashierScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. 顶部始终显示当前称重状态 (Always show the live scale weight)
-          _WeightDisplay(kg: _currentKg, valid: _scaleConnected && _weightValid, stable: _weightStable, lp: lp),
+          _WeightDisplay(
+            precision: _precision,
+            kg: _currentKg,
+            valid: _scaleConnected && _weightValid,
+            stable: _weightStable,
+            lp: lp,
+          ),
           if (_scaleControlAvailable) ...[
-          const SizedBox(height: 8),
-          Row(children: [
-            Expanded(child: OutlinedButton.icon(
-              onPressed: _scaleConnected && _weightStable
-                  ? () => _sendScaleCommand(lp, tare: true) : null,
-              icon: const Icon(Icons.layers_clear_rounded),
-              label: Text(lp.tr('tare')),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: OutlinedButton.icon(
-              onPressed: _scaleConnected && _weightStable
-                  ? () => _sendScaleCommand(lp, tare: false) : null,
-              icon: const Icon(Icons.restart_alt_rounded),
-              label: Text(lp.tr('zero')),
-            )),
-            if (_weightIsTare || _weightIsZero) ...[
-              const SizedBox(width: 8),
-              Text(lp.tr(_weightIsTare ? 'tare_active' : 'zero_active'),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF166534))),
-            ],
-          ]),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _scaleConnected && _weightStable
+                        ? () => _sendScaleCommand(lp, tare: true)
+                        : null,
+                    icon: const Icon(Icons.layers_clear_rounded),
+                    label: Text(lp.tr('tare')),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _scaleConnected && _weightStable
+                        ? () => _sendScaleCommand(lp, tare: false)
+                        : null,
+                    icon: const Icon(Icons.restart_alt_rounded),
+                    label: Text(lp.tr('zero')),
+                  ),
+                ),
+                if (_weightIsTare || _weightIsZero) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    lp.tr(_weightIsTare ? 'tare_active' : 'zero_active'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF166534),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
           const SizedBox(height: 8),
 
           // 2. 根据左右选择情况显示操作状态
           if (hasSelected) ...[
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(12)),
-                child: Icon(_selectedItem!.isByWeight ? Icons.scale_rounded : Icons.fastfood_rounded, size: 20, color: const Color(0xFF0284C7)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _selectedItem!.nameFor(lp.localeStr),
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _priceCtrl,
-                  readOnly: true,
-                  showCursor: false,
-                  enableInteractiveSelection: false,
-                  decoration: InputDecoration(
-                    labelText: lp.tr('unit_price'),
-                    prefixText: '฿ ',
-                    suffixText: _selectedItem!.isByWeight ? '/kg' : '/pc',
-                    border: const OutlineInputBorder(),
-                    isDense: true,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2FE),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _selectedItem!.isByWeight
+                        ? Icons.scale_rounded
+                        : Icons.fastfood_rounded,
+                    size: 20,
+                    color: const Color(0xFF0284C7),
                   ),
                 ),
-              ),
-              if (_selectedItem!.isQuickWeigh)
-                TextButton(
-                  onPressed: () => _saveDefaultPrice(lp),
-                  child: Text(lp.tr('save_default_price')),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedItem!.nameFor(lp.localeStr),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0F172A),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-            ]),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _priceCtrl,
+                    readOnly: true,
+                    showCursor: false,
+                    enableInteractiveSelection: false,
+                    decoration: InputDecoration(
+                      labelText: lp.tr('unit_price'),
+                      prefixText: '฿ ',
+                      suffixText: _selectedItem!.isByWeight ? '/kg' : '/pc',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                if (_selectedItem!.isQuickWeigh)
+                  TextButton(
+                    onPressed: () => _saveDefaultPrice(lp),
+                    child: Text(lp.tr('save_default_price')),
+                  ),
+              ],
+            ),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(lp.tr('calculated_price'),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 Text(
-                  '฿ ${CartItem.saleSubtotal(
-                    byWeight: _selectedItem!.isByWeight,
-                    quantity: _selectedItem!.isByWeight
-                        ? (_weightValid && _scaleConnected ? _currentKg : 0)
-                        : _fixedQty.toDouble(),
-                    price: _enteredPrice,
-                  ).toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900,
-                      color: Color(0xFF0284C7)),
+                  lp.tr('calculated_price'),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  '฿ ${CartItem.saleSubtotal(byWeight: _selectedItem!.isByWeight, quantity: _selectedItem!.isByWeight ? (_weightValid && _scaleConnected ? _currentKg : 0) : _fixedQty.toDouble(), price: _enteredPrice, weightDigits: _precision.weightDigits, moneyDigits: _precision.moneyDigits, truncate: _precision.truncate).toStringAsFixed(_precision.moneyDigits)}',
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0284C7),
+                  ),
                 ),
               ],
             ),
@@ -803,47 +982,94 @@ class _CashierScreenState extends State<CashierScreen> {
               width: double.infinity,
               child: FilledButton.icon(
                 icon: const Icon(Icons.add_shopping_cart_rounded, size: 26),
-                label: Text(lp.tr('add_to_cart'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                label: Text(
+                  lp.tr('add_to_cart'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF10B981), // Emerald 500
                   padding: const EdgeInsets.symmetric(vertical: 22),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
                 onPressed: () => _addToCart(lp),
               ),
             ),
           ],
           if (hasSelected && !_selectedItem!.isByWeight) ...[
-            Row(children: [
-              Text(lp.tr('qty'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-              const Spacer(),
-              _QtyButton(icon: Icons.remove_rounded, onPressed: () => setState(() => _fixedQty = (_fixedQty - 1).clamp(1, 99))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text('$_fixedQty', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-              ),
-              _QtyButton(icon: Icons.add_rounded, onPressed: () => setState(() => _fixedQty = (_fixedQty + 1).clamp(1, 99))),
-            ]),
+            Row(
+              children: [
+                Text(
+                  lp.tr('qty'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                const Spacer(),
+                _QtyButton(
+                  icon: Icons.remove_rounded,
+                  onPressed: () =>
+                      setState(() => _fixedQty = (_fixedQty - 1).clamp(1, 99)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    '$_fixedQty',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+                _QtyButton(
+                  icon: Icons.add_rounded,
+                  onPressed: () =>
+                      setState(() => _fixedQty = (_fixedQty + 1).clamp(1, 99)),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 icon: const Icon(Icons.add_shopping_cart_rounded, size: 26),
-                label: Text(lp.tr('add_to_cart'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                label: Text(
+                  lp.tr('add_to_cart'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF10B981),
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
                 onPressed: () => _addToCart(lp),
               ),
-            )
+            ),
           ],
           if (!hasSelected)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(lp.tr('pls_select_from_left'), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 16, fontWeight: FontWeight.w500)),
+                child: Text(
+                  lp.tr('pls_select_from_left'),
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
         ],
@@ -857,20 +1083,34 @@ class _CashierScreenState extends State<CashierScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.shopping_basket_outlined, size: 60, color: Color(0xFFE2E8F0)),
+            const Icon(
+              Icons.shopping_basket_outlined,
+              size: 60,
+              color: Color(0xFFE2E8F0),
+            ),
             const SizedBox(height: 12),
-            Text(lp.tr('cart_empty'), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 16, fontWeight: FontWeight.w500)),
-          ]
-        )
+            Text(
+              lp.tr('cart_empty'),
+              style: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       );
     }
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: _cart.length,
-      separatorBuilder: (context, index) => const Divider(height: 1, thickness: 1.5, color: Color(0xFFF1F5F9)),
+      separatorBuilder: (context, index) =>
+          const Divider(height: 1, thickness: 1.5, color: Color(0xFFF1F5F9)),
       itemBuilder: (_, i) {
         final item = _cart[i];
-        final unit = item.menuItem.isByWeight ? lp.tr('unit_kg') : lp.tr('unit_pc');
+        final unit = item.menuItem.isByWeight
+            ? lp.tr('unit_kg')
+            : lp.tr('unit_pc');
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
@@ -879,18 +1119,47 @@ class _CashierScreenState extends State<CashierScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.menuItem.nameFor(lp.localeStr), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 24, color: Color(0xFF0F172A), height: 1.1)),
+                    Text(
+                      item.menuItem.nameFor(lp.localeStr),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 24,
+                        color: Color(0xFF0F172A),
+                        height: 1.1,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     RichText(
                       text: TextSpan(
                         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                          fontSize: 18, color: const Color(0xFF64748B)),
+                          fontSize: 18,
+                          color: const Color(0xFF64748B),
+                        ),
                         children: [
-                          TextSpan(text: item.weight.toStringAsFixed(3), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0284C7), fontSize: 22)),
+                          TextSpan(
+                            text: item.weight.toStringAsFixed(
+                              item.weightDigits,
+                            ),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0284C7),
+                              fontSize: 22,
+                            ),
+                          ),
                           const TextSpan(text: ' '),
-                          TextSpan(text: unit, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          TextSpan(
+                            text: unit,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const TextSpan(text: ' × '),
-                          TextSpan(text: '${item.menuItem.price.toStringAsFixed(2)} ฿', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF10B981))),
+                          TextSpan(
+                            text:
+                                '${item.menuItem.price.toStringAsFixed(item.moneyDigits)} ฿',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF10B981),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -898,8 +1167,13 @@ class _CashierScreenState extends State<CashierScreen> {
                 ),
               ),
               Text(
-                '฿ ${item.subtotal.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.5),
+                '฿ ${item.subtotal.toStringAsFixed(item.moneyDigits)}',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.5,
+                ),
               ),
               const SizedBox(width: 8),
               IconButton(
@@ -925,23 +1199,41 @@ class _CashierScreenState extends State<CashierScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          Expanded(child: Row(
-            children: [
-              Text(lp.tr('total').toUpperCase(), style: const TextStyle(color: Color(0xFF64748B), fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 20),
-              Text(
-                '฿ ${_total.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: Color(0xFF0284C7)), // Sky 600
-              ),
-            ],
-          )),
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  lp.tr('total').toUpperCase(),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Text(
+                  '฿ ${_total.toStringAsFixed(_precision.moneyDigits)}',
+                  style: const TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0284C7),
+                  ), // Sky 600
+                ),
+              ],
+            ),
+          ),
           TextButton.icon(
             icon: const Icon(Icons.delete_sweep_rounded, size: 24),
-            label: Text(lp.tr('clear'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            label: Text(
+              lp.tr('clear'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFEF4444),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
             ),
             onPressed: _cart.isEmpty ? null : _clearCart,
           ),
@@ -950,14 +1242,24 @@ class _CashierScreenState extends State<CashierScreen> {
             width: 300,
             child: FilledButton.icon(
               icon: const Icon(Icons.receipt_long_rounded, size: 28),
-              label: Text(lp.tr(_printEnabled ? 'print_ticket' : 'finish_sale'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              label: Text(
+                lp.tr(_printEnabled ? 'print_ticket' : 'finish_sale'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF0EA5E9),
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 elevation: 0,
               ),
-              onPressed: _cart.isEmpty || _printing ? null : () => _printReceipt(lp),
+              onPressed: _cart.isEmpty || _printing
+                  ? null
+                  : () => _printReceipt(lp),
             ),
           ),
         ],
@@ -967,17 +1269,24 @@ class _CashierScreenState extends State<CashierScreen> {
 }
 
 class _MenuCard extends StatelessWidget {
+  final SalePrecision precision;
   final MenuItem item;
   final bool selected;
   final VoidCallback onTap;
   final LocaleProvider lp;
 
-  const _MenuCard({required this.item, required this.selected, required this.onTap, required this.lp});
+  const _MenuCard({
+    required this.precision,
+    required this.item,
+    required this.selected,
+    required this.onTap,
+    required this.lp,
+  });
 
   @override
   Widget build(BuildContext context) {
     final primaryName = item.nameFor(lp.localeStr);
-    
+
     return RepaintBoundary(
       child: GestureDetector(
         onTap: onTap,
@@ -986,12 +1295,26 @@ class _MenuCard extends StatelessWidget {
             color: selected ? const Color(0xFF0284C7) : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? const Color(0xFF0284C7) : const Color(0xFFE2E8F0),
+              color: selected
+                  ? const Color(0xFF0284C7)
+                  : const Color(0xFFE2E8F0),
               width: 1.5,
             ),
             boxShadow: selected
-                ? [const BoxShadow(color: Color(0x330284C7), blurRadius: 10, offset: Offset(0, 4))]
-                : [const BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 2))],
+                ? [
+                    const BoxShadow(
+                      color: Color(0x330284C7),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ]
+                : [
+                    const BoxShadow(
+                      color: Color(0x05000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Stack(
             children: [
@@ -1005,23 +1328,35 @@ class _MenuCard extends StatelessWidget {
                       height: 48,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: item.isByWeight 
-                            ? [const Color(0xFF0EA5E9), const Color(0xFF38BDF8)]
-                            : [const Color(0xFFF59E0B), const Color(0xFFFBBF24)],
+                          colors: item.isByWeight
+                              ? [
+                                  const Color(0xFF0EA5E9),
+                                  const Color(0xFF38BDF8),
+                                ]
+                              : [
+                                  const Color(0xFFF59E0B),
+                                  const Color(0xFFFBBF24),
+                                ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: (item.isByWeight ? const Color(0xFF0EA5E9) : const Color(0xFFF59E0B)).withValues(alpha: 0.15),
+                            color:
+                                (item.isByWeight
+                                        ? const Color(0xFF0EA5E9)
+                                        : const Color(0xFFF59E0B))
+                                    .withValues(alpha: 0.15),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
-                          )
+                          ),
                         ],
                       ),
                       child: Icon(
-                        item.isByWeight ? Icons.scale_rounded : Icons.fastfood_rounded,
+                        item.isByWeight
+                            ? Icons.scale_rounded
+                            : Icons.fastfood_rounded,
                         size: 24,
                         color: Colors.white,
                       ),
@@ -1029,7 +1364,14 @@ class _MenuCard extends StatelessWidget {
                     const Spacer(),
                     Text(
                       primaryName,
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: selected ? Colors.white : const Color(0xFF0F172A), height: 1.1),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: selected
+                            ? Colors.white
+                            : const Color(0xFF0F172A),
+                        height: 1.1,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1040,15 +1382,20 @@ class _MenuCard extends StatelessWidget {
                 top: 16,
                 right: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: selected ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFF1F5F9),
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     item.isByWeight
-                        ? '${item.price.toStringAsFixed(2)} ${lp.tr('price_kg')}'
-                        : '${item.price.toStringAsFixed(2)} ${lp.tr('price_pc')}',
+                        ? '${precision.moneyText(item.price)} ${lp.tr('price_kg')}'
+                        : '${precision.moneyText(item.price)} ${lp.tr('price_pc')}',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -1066,12 +1413,19 @@ class _MenuCard extends StatelessWidget {
 }
 
 class _WeightDisplay extends StatelessWidget {
+  final SalePrecision precision;
   final double kg;
   final bool valid;
   final bool stable;
   final LocaleProvider lp;
 
-  const _WeightDisplay({required this.kg, required this.valid, required this.stable, required this.lp});
+  const _WeightDisplay({
+    required this.precision,
+    required this.kg,
+    required this.valid,
+    required this.stable,
+    required this.lp,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1079,24 +1433,35 @@ class _WeightDisplay extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: valid ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9), // Green 100 or Slate 100
+        color: valid
+            ? const Color(0xFFDCFCE7)
+            : const Color(0xFFF1F5F9), // Green 100 or Slate 100
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: valid ? const Color(0xFF22C55E) : const Color(0xFFE2E8F0), width: 2),
+        border: Border.all(
+          color: valid ? const Color(0xFF22C55E) : const Color(0xFFE2E8F0),
+          width: 2,
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.scale_rounded, color: valid ? const Color(0xFF16A34A) : const Color(0xFF94A3B8), size: 44),
+          Icon(
+            Icons.scale_rounded,
+            color: valid ? const Color(0xFF16A34A) : const Color(0xFF94A3B8),
+            size: 44,
+          ),
           const SizedBox(width: 20),
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                '${kg.toStringAsFixed(3)} kg',
+                '${precision.weightText(kg)} kg',
                 style: TextStyle(
                   fontSize: 48,
                   fontWeight: FontWeight.w900,
-                  color: valid ? const Color(0xFF166534) : const Color(0xFF64748B),
+                  color: valid
+                      ? const Color(0xFF166534)
+                      : const Color(0xFF64748B),
                   fontFeatures: const [FontFeature.tabularFigures()],
                   letterSpacing: -1.0,
                 ),
@@ -1105,8 +1470,15 @@ class _WeightDisplay extends StatelessWidget {
           ),
           if (valid && stable) ...[
             const SizedBox(width: 16),
-            Container(width: 16, height: 16, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF10B981))),
-          ]
+            Container(
+              width: 16,
+              height: 16,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF10B981),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1144,7 +1516,12 @@ class _StatusChip extends StatelessWidget {
   final bool connected;
   final VoidCallback? onTap;
 
-  const _StatusChip({required this.icon, required this.label, required this.connected, required this.onTap});
+  const _StatusChip({
+    required this.icon,
+    required this.label,
+    required this.connected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1156,13 +1533,36 @@ class _StatusChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: connected ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: connected ? const Color(0xFFB1F2C2) : const Color(0xFFFECACA), width: 1.5)
+          border: Border.all(
+            color: connected
+                ? const Color(0xFFB1F2C2)
+                : const Color(0xFFFECACA),
+            width: 1.5,
+          ),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 20, color: connected ? const Color(0xFF16A34A) : const Color(0xFFDC2626)),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: connected ? const Color(0xFF16A34A) : const Color(0xFFDC2626))),
-        ]),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: connected
+                  ? const Color(0xFF16A34A)
+                  : const Color(0xFFDC2626),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: connected
+                    ? const Color(0xFF16A34A)
+                    : const Color(0xFFDC2626),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

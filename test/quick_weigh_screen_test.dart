@@ -71,6 +71,7 @@ void main() {
 
       await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Enable product camera'), 300, scrollable: find.byType(Scrollable).first);
       expect(find.text('Enable product camera'), findsOneWidget);
       expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile).last).value, false);
       await tester.tap(find.text('Enable product camera'));

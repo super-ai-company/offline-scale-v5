@@ -1,6 +1,27 @@
 class AppTranslations {
   static const Map<String, Map<String, String>> locale = {
     'th': {
+      'precision_settings': 'ทศนิยมและเงินสด',
+      'weight_digits': 'ทศนิยมน้ำหนัก (kg)',
+      'money_digits': 'ทศนิยมจำนวนเงิน THB',
+      'decimal_mode': 'การจัดการเศษ',
+      'decimal_round': 'ปัดเศษครึ่งขึ้น',
+      'decimal_truncate': 'ตัดทศนิยม',
+      'precision_example': 'ตัวอย่าง',
+      'precision_hint':
+          'ค่าเริ่มต้นน้ำหนัก3 เงิน2 ใช้กับน้ำหนักราคาและยอดต่อรายการ ยอดรวมเป็นผลรวมรายการ ตะกร้าเดิมคงราคาเดิม เริ่มค่าตั้งใหม่ในรายการถัดไป',
+      'precision_zero_weight':
+          'น้ำหนักเป็นศูนย์ตามความละเอียดนี้ กรุณาปรับน้ำหนักหรือทศนิยม',
+
+      'local_resolve': 'แก้ไขผลพิมพ์ในเครื่องที่ไม่แน่นอน',
+      'local_resolve_hint': 'ตรวจใบเสร็จก่อน ปลดการป้องกันแล้วอาจพิมพ์ซ้ำ',
+      'printer_local_first': 'พิมพ์ USB / SUNMI ก่อน ใช้ได้ออฟไลน์',
+      'feie_enabled': 'เปิด Feie สำรอง (ปิดโดยค่าเริ่มต้น)',
+      'feie_fallback_hint':
+          'ใช้เมื่อเชื่อมต่อเครื่องพิมพ์ในเครื่องไม่ได้เท่านั้น หากส่งแล้วไม่แน่ชัดจะไม่ส่งซ้ำไปคลาวด์',
+      'print_local_uncertain':
+          'ไม่ยืนยันการพิมพ์ในเครื่อง โปรดตรวจใบเสร็จก่อนพิมพ์ซ้ำ ไม่ส่งไปคลาวด์อัตโนมัติ',
+
       'confirm': 'ยืนยัน',
       'printer_backend': 'ประเภทเครื่องพิมพ์',
       'printer_usb': 'USB / SUNMI (ออฟไลน์)',
@@ -126,6 +147,24 @@ class AppTranslations {
       'customer_cart_title': 'รายการสินค้า',
     },
     'zh': {
+      'precision_settings': '精度与现金金额',
+      'weight_digits': '重量小数位（kg）',
+      'money_digits': '泰铢金额小数位',
+      'decimal_mode': '尾数处理方式',
+      'decimal_round': '四舍五入',
+      'decimal_truncate': '直接截去尾数',
+      'precision_example': '示例',
+      'precision_hint':
+          '重量默认3位，金额默认2位。重量、单价与每行金额按所选规则计价，合计为行金额之和；已有购物车不改价，新设置从下一单生效。',
+      'precision_zero_weight': '按当前重量精度结果为零，请增加重量或调整精度。',
+
+      'local_resolve': '处理结果不明的本地打印',
+      'local_resolve_hint': '请先核对本机纸张。确认解除后允许再次打印，可能重复出纸。',
+      'printer_local_first': '优先 USB / 商米本地打印，断网可用',
+      'feie_enabled': '启用飞鹅备用打印（默认关闭）',
+      'feie_fallback_hint': '仅在本地无法连接且尚未发送小票时使用。已发送但结果不明时，不自动转云打印。',
+      'print_local_uncertain': '本地打印结果未确认，请先检查纸张再处理；未自动转发飞鹅，避免重复出纸。',
+
       'confirm': '确认',
       'printer_backend': '打印方式',
       'printer_usb': 'USB / 商米内置（离线）',
@@ -247,6 +286,28 @@ class AppTranslations {
       'customer_cart_title': '购物车',
     },
     'en': {
+      'precision_settings': 'Precision and cash amounts',
+      'weight_digits': 'Weight decimals (kg)',
+      'money_digits': 'THB amount decimals',
+      'decimal_mode': 'Decimal handling',
+      'decimal_round': 'Round half up',
+      'decimal_truncate': 'Truncate extra digits',
+      'precision_example': 'Example',
+      'precision_hint':
+          'Defaults: weight 3, money 2. Weight, unit price and line amounts use this rule; totals sum line amounts. Existing carts keep their pricing. New settings apply to the next sale.',
+      'precision_zero_weight':
+          'Weight becomes zero at this precision. Increase weight or change precision.',
+
+      'local_resolve': 'Resolve uncertain local print',
+      'local_resolve_hint':
+          'Check local paper first. Releasing the guard allows another print and may duplicate a receipt.',
+      'printer_local_first': 'USB / SUNMI first; works offline',
+      'feie_enabled': 'Enable Feie backup (off by default)',
+      'feie_fallback_hint':
+          'Only when local connection fails before sending a receipt. No cloud retry after an uncertain local print.',
+      'print_local_uncertain':
+          'Local print unconfirmed. Check paper before retrying; no automatic cloud duplicate.',
+
       'confirm': 'Confirm',
       'printer_backend': 'Printer type',
       'printer_usb': 'USB / SUNMI built-in (offline)',

@@ -19,6 +19,8 @@ The app retains `com.vdamov3.cashier_trae` and the original signing certificate 
 - Configurable serial scale path and baud rate. Stable valid positive kg required for weighed sales; stale readings are invalidated.
 - Tare and zero shown only for a compatible protocol, with command submission distinguished from scale response.
 - USB 58 mm receipt adapter and SUNMI built-in printer adapter.
+- USB/SUNMI always has priority. Feie backup has an independent switch, off by default; it runs only after local connection failure before receipt submission.
+- Weight precision 0–3 digits (default 3), THB precision 0/1/2 (default 2), round half up or truncate; screens and receipts agree.
 - Optional Feie Cloud settings: region, USER, encrypted UKEY, SN, status check, test receipt and last-order confirmation.
 - No automatic cloud retry after lost replies. Persistent resend protection survives app restart.
 - Product camera disabled by default; local recognition is experimental and requires dedicated hardware plus operator confirmation.
@@ -51,3 +53,9 @@ flutter build apk --release
 Verified build environment: Flutter 3.47.5 / Dart 3.13.4, existing Gradle 8.14 / AGP 8.11.1, Java 17 compatible bytecode. Output: `build/app/outputs/flutter-apk/app-release.apk`.
 
 Derived from [lijingpan/cashiertraeV2, offline branch](https://github.com/lijingpan/cashiertraeV2/tree/codex/offline-ai), with source history retained. See [third-party notices](THIRD_PARTY.md).
+
+## Precision
+
+![Precision and backup](docs/screenshots/precision-settings-en.png)
+
+Integer THB mode removes fractional cash amounts. Weight, unit price and line amounts use the selected rounding rule; totals sum billed lines. Existing carts retain their pricing; changes apply to the next sale. For example, 12.55 THB rounds to 13 or truncates to 12 at zero decimals. Integer mode also quantizes unit prices.

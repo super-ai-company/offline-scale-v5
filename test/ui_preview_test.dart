@@ -156,7 +156,7 @@ void main() {
 
       await tester.pumpWidget(const SizedBox());
       SharedPreferences.setMockInitialValues({
-        'printer_backend': 'feie',
+        'feie_enabled': true,
         'language': 'zh',
       });
       final settingsLp = LocaleProvider();
@@ -188,10 +188,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.drag(find.byType(ListView), const Offset(0, -390));
       await tester.pumpAndSettle();
+      await capture('precision-settings-zh');
+      await tester.drag(find.byType(ListView), const Offset(0, -420));
+      await tester.pumpAndSettle();
       await capture('feie-settings-zh');
       await tester.runAsync(() => settingsLp.setLocale('en'));
       await tester.pumpAndSettle();
       await capture('feie-settings-en');
+      await tester.drag(find.byType(ListView), const Offset(0, 420));
+      await tester.pumpAndSettle();
+      await capture('precision-settings-en');
       expect(tester.takeException(), isNull);
     } finally {
       await tester.pumpWidget(const SizedBox());

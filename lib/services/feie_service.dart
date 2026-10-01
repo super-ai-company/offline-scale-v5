@@ -161,13 +161,15 @@ class FeieService {
     for (final item in items) {
       out.write('${plain(item.menuItem.nameFor(language))}<BR>');
       out.write(
-        '${item.weightLabel} x ${item.menuItem.price.toStringAsFixed(2)}',
+        '${item.weightLabel} x ${item.menuItem.price.toStringAsFixed(item.moneyDigits)}',
       );
-      out.write(' = ${item.subtotal.toStringAsFixed(2)} THB<BR>');
+      out.write(
+        ' = ${item.subtotal.toStringAsFixed(item.moneyDigits)} THB<BR>',
+      );
     }
     out.write('--------------------------------<BR>');
     out.write(
-      '<B>${plain(totalLabel)}: ${total.toStringAsFixed(2)} THB</B><BR><BR>',
+      '<B>${plain(totalLabel)}: ${total.toStringAsFixed(items.isEmpty ? 2 : items.map((e) => e.moneyDigits).reduce((a, b) => a > b ? a : b))} THB</B><BR><BR>',
     );
     return out.toString();
   }
