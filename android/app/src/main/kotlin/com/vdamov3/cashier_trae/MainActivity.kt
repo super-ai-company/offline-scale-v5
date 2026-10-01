@@ -10,10 +10,12 @@ class MainActivity : FlutterActivity() {
     private val weightChannel = WeightChannel()
     private val printChannel by lazy { PrintChannel(applicationContext) }
     private val aiChannel by lazy { AiEmbeddingChannel(applicationContext) }
+    private val updateChannel by lazy { UpdateChannel(this) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
+        MethodChannel(messenger, "cashier/update").setMethodCallHandler(updateChannel)
 
         // 称重 MethodChannel
         MethodChannel(messenger, "cashier/weight").setMethodCallHandler(weightChannel)
@@ -32,5 +34,6 @@ class MainActivity : FlutterActivity() {
         weightChannel.shutdown()
         printChannel.shutdown()
         aiChannel.close()
+        updateChannel.close()
     }
 }

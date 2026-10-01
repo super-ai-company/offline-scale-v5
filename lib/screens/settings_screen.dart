@@ -1,4 +1,5 @@
 import '../models/sale_precision.dart';
+import '../widgets/app_update_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,7 +9,8 @@ import '../utils/top_toast.dart';
 import '../services/feie_service.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final bool hasPendingSale;
+  const SettingsScreen({super.key, this.hasPendingSale = false});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -272,6 +274,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
+              AppUpdateSettings(allowed: !widget.hasPendingSale),
+              const SizedBox(height: 24),
               _Section(
                 title: lp.tr('shop_info'),
                 children: [

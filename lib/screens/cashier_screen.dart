@@ -659,7 +659,7 @@ class _CashierScreenState extends State<CashierScreen> {
           onPressed: () async {
             await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              MaterialPageRoute(builder: (_) => SettingsScreen(hasPendingSale: _cart.isNotEmpty)),
             );
             _loadPrintSetting();
             _loadProductCameraSetting();

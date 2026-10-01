@@ -69,3 +69,7 @@ The distributed APK was installed in place on the current scale with existing se
 36 项回归通过、分析无问题、release 构建通过。增加5项本地优先/默认关云/本地发送不明禁止转云测试，以及5项金额/重量精度与票据快照测试。重量默认3位、金额默认2位，支持四舍五入与截尾。旧云模式选择不会自动打开新备用开关。
 
 真实商品0.720kg×5242.00THB/kg=3774.24THB：USB位图/切纸返回true，飞鹅订单查询printed，用户确认两台纸张中文/金额/切纸正常（该商品票实测发生在1.2.0）。Wi-Fi关闭的实测依用户指令留待其手动进行；不因此声称已实测断网。新1.2.1的整数精度真机结果见发布说明。
+
+## v1.2.2 update acceptance
+
+Owner confirmed v1.2.1 Wi-Fi-off local printing on 2026-10-02. This supersedes the earlier deferred offline hardware test; physical fallback faults, SUNMI hardware and Thai cloud fonts remain unverified. v1.2.2 adds manual stable-release checking and Android-confirmed updates. Metadata rejects draft/prerelease/older releases, unofficial URLs, missing SHA-256, ambiguous assets and invalid sizes; native APK checks enforce byte count, digest, package, signing certificates and higher versionCode.

@@ -59,3 +59,9 @@ Derived from [lijingpan/cashiertraeV2, offline branch](https://github.com/lijing
 ![Precision and backup](docs/screenshots/precision-settings-en.png)
 
 Integer THB mode removes fractional cash amounts. Weight, unit price and line amounts use the selected rounding rule; totals sum billed lines. Existing carts retain their pricing; changes apply to the next sale. For example, 12.55 THB rounds to 13 or truncates to 12 at zero decimals. Integer mode also quantizes unit prices.
+
+### App updates and Feie handoff
+
+From v1.2.2, use Settings → App updates → Check for updates. Stable releases come from this company repository. Downloaded APKs must match SHA-256, the application ID, installed signing certificates and a higher version code before Android opens the installation confirmation. First grant this app installation permission if requested. Finish the current sale before updating; do not uninstall. Cancellation or download failure preserves the installed app and data. No startup/background update checks block offline operation.
+
+[Feie integration skill](docs/skills/feie-offline-scale/SKILL.md). Account/device values resolve from the existing local registry; no personal account or UKEY is published. On 2026-10-02 the owner confirmed offline local printing works with v1.2.1.
