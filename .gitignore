@@ -49,3 +49,13 @@ app.*.map.json
 
 # Claude Code
 .claude/
+
+# Local credentials and release signing material
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.pem
+*.p12
+key.properties

@@ -22,13 +22,15 @@ class MainActivity : FlutterActivity() {
 
         // 打印 MethodChannel
         MethodChannel(messenger, "cashier/print").setMethodCallHandler(printChannel)
+        MethodChannel(messenger, "cashier/secrets").setMethodCallHandler(SecretChannel(applicationContext))
         MethodChannel(messenger, "cashier/ai_embedding").setMethodCallHandler(aiChannel)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         // 关闭串口，释放资源
-        weightChannel.onCancel(null)
+        weightChannel.shutdown()
+        printChannel.shutdown()
         aiChannel.close()
     }
 }

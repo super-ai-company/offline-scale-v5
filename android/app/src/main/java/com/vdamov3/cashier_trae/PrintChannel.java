@@ -74,6 +74,11 @@ public class PrintChannel implements MethodChannel.MethodCallHandler {
         this.context = context;
     }
 
+    public void shutdown() {
+        // Do not block Activity teardown while a physical ticket finishes.
+        new Thread(this::closePort, "PrinterShutdown").start();
+    }
+
     @Override
     public void onMethodCall(MethodCall call, MethodChannel.Result result) {
         switch (call.method) {
@@ -205,7 +210,7 @@ public class PrintChannel implements MethodChannel.MethodCallHandler {
     // ── 打印逻辑 ──────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")
-    private boolean executePrint(MethodCall call) {
+    private synchronized boolean executePrint(MethodCall call) {
         if (!openPort()) {
             Log.e(TAG, "executePrint: openPort failed, abort");
             return false;
@@ -322,9 +327,9 @@ public class PrintChannel implements MethodChannel.MethodCallHandler {
 
                 detail.append(name).append("\n");
                 if (byWeight) {
-                    detail.append(String.format("  %.3f kg × %.2f฿ = %.2f฿\n", weight, price, subtotal));
+                    detail.append(String.format(Locale.US, "  %.3f kg × %.2f฿ = %.2f฿\n", weight, price, subtotal));
                 } else {
-                    detail.append(String.format("  x%.0f × %.2f฿ = %.2f฿\n", weight, price, subtotal));
+                    detail.append(String.format(Locale.US, "  x%.0f × %.2f฿ = %.2f฿\n", weight, price, subtotal));
                 }
             }
         }

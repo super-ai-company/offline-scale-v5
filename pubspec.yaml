@@ -2,7 +2,7 @@ name: cashier_trae
 description: "Offline cashier with weighing and receipt printing"
 publish_to: 'none'
 
-version: 1.1.1+7
+version: 1.2.0+8
 
 environment:
   sdk: ^3.10.7
@@ -19,6 +19,7 @@ dependencies:
   presentation_displays:
     path: vendor/presentation_displays
   camera: ^0.12.1
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

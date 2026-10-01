@@ -3,11 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cashier_trae/models/cart_item.dart';
 import 'package:cashier_trae/models/menu_item.dart';
 import 'package:cashier_trae/services/print_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('cashier/print');
   final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
   tearDown(() async {
     await PrintService().disconnect();

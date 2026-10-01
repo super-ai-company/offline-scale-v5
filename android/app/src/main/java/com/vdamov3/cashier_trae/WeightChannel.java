@@ -40,6 +40,7 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
     private OutputStream outputStream;
     private Thread readThread;
     private volatile boolean reading = false;
+    private volatile long readerGeneration = 0;
     private long frameCount = 0;
 
     @Override
@@ -105,6 +106,7 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
     }
 
     private void closeSerial() {
+        readerGeneration++;
         reading = false;
         if (readThread != null) {
             readThread.interrupt();
@@ -142,13 +144,16 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
 
     private void startReadLoop() {
         if (inputStream == null) return;
+        final InputStream readerInput = inputStream;
+        final long generation = readerGeneration;
         reading = true;
         readThread = new Thread(() -> {
             byte[] buf = new byte[128];
-            while (reading && !Thread.currentThread().isInterrupted()) {
+            while (reading && generation == readerGeneration && !Thread.currentThread().isInterrupted()) {
                 try {
-                    int n = inputStream.read(buf);
+                    int n = readerInput.read(buf);
                     if (n <= 0) continue;
+                    if (generation != readerGeneration) break;
                     appendAndParse(buf, n);
                 } catch (IOException e) {
                     if (reading) {
@@ -161,6 +166,11 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
             }
         }, "WeightRawReader");
         readThread.start();
+    }
+
+    public void shutdown() {
+        onCancel(null);
+        closeSerial();
     }
 
     private synchronized void appendAndParse(byte[] chunk, int size) {

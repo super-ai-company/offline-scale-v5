@@ -4,12 +4,15 @@
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- 串口读写权限（部分设备需要） -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:label="Offline Cashier"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
@@ -39,10 +42,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <activity
-            android:name="presentation_displays.flutter_presentation_displays.PresentationDisplay"
-            android:theme="@android:style/Theme.Light.NoTitleBar.Fullscreen"
-            android:exported="true" />
     </application>
 
     <queries>

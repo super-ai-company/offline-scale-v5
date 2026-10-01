@@ -1,9 +1,40 @@
 class AppTranslations {
   static const Map<String, Map<String, String>> locale = {
     'th': {
+      'confirm': 'ยืนยัน',
+      'printer_backend': 'ประเภทเครื่องพิมพ์',
+      'printer_usb': 'USB / SUNMI (ออฟไลน์)',
+      'printer_feie': 'Feie Cloud (ต้องใช้อินเทอร์เน็ต)',
+      'feie_hint':
+          'ผูกเครื่องพิมพ์ใบเสร็จในเว็บ Feie ก่อน UKEY ไม่ใช่ KEY บนเครื่อง การรับงานไม่ใช่การยืนยันพิมพ์ ตรวจเว็บก่อนลองซ้ำ',
+      'feie_region': 'ภูมิภาคบัญชี',
+      'feie_user': 'บัญชีนักพัฒนา USER',
+      'feie_ukey': 'UKEY (บันทึกแบบเข้ารหัส)',
+      'feie_sn': 'SN เครื่องพิมพ์ (9 หลัก)',
+      'feie_check': 'ตรวจสถานะ',
+      'feie_test': 'พิมพ์ทดสอบ',
+      'feie_order': 'ตรวจใบเสร็จล่าสุด',
+      'feie_invalid': 'กรอก USER, UKEY และ SN 9 หลัก',
+      'feie_key_error': 'อ่านหรือบันทึกคีย์ไม่ได้ กรุณากรอก UKEY ใหม่',
+      'feie_network_error':
+          'เชื่อมต่อคลาวด์ไม่ได้ ตรวจเครือข่าย ภูมิภาค บัญชี และเครื่องพิมพ์',
+      'feie_online': 'เครื่องพิมพ์ออนไลน์ พร้อมรับงาน',
+      'feie_offline': 'เครื่องพิมพ์ออฟไลน์ ยังไม่ได้ส่งงาน',
+      'feie_abnormal': 'เครื่องพิมพ์ผิดปกติ ตรวจกระดาษและเครื่อง',
+      'feie_accepted': 'Feie รับงานแล้ว รอยืนยันพิมพ์ ตรวจในตั้งค่า',
+      'feie_uncertain':
+          'ผลพิมพ์ไม่แน่นอน ระงับส่งซ้ำ ตรวจเว็บและกระดาษแล้วแก้ไขในตั้งค่า',
+      'feie_printed': 'Feie ยืนยันพิมพ์งานล่าสุดแล้ว',
+      'feie_queued': 'ยังไม่ยืนยันพิมพ์งานล่าสุด อย่าส่งซ้ำ',
+      'feie_no_order': 'ไม่มีใบเสร็จคลาวด์สำหรับบัญชีและภูมิภาคนี้',
+      'feie_resolve': 'แก้ไขผลพิมพ์ที่ไม่แน่นอน',
+      'feie_resolve_hint':
+          'ยืนยันหลังตรวจเว็บ Feie และกระดาษเท่านั้น อาจพิมพ์ซ้ำเมื่อส่งใหม่ และไม่ได้ยกเลิกงานในคลาวด์',
+      'feie_resolved': 'ปลดการป้องกันส่งซ้ำแล้ว จัดการตะกร้าตามผลตรวจ',
       'product_camera_settings': 'กล้องสินค้า',
       'product_camera_enabled': 'เปิดกล้องสินค้า',
-      'product_camera_hint': 'เปิดเมื่อมีกล้องที่หันไปยังสินค้าบนเครื่องชั่งเท่านั้น',
+      'product_camera_hint':
+          'เปิดเมื่อมีกล้องที่หันไปยังสินค้าบนเครื่องชั่งเท่านั้น',
       'ai_camera': 'กล้องสินค้า',
       'ai_capture': 'ถ่ายภาพสินค้า',
       'ai_camera_error': 'เปิดกล้องหรือวิเคราะห์ภาพไม่สำเร็จ',
@@ -95,6 +126,33 @@ class AppTranslations {
       'customer_cart_title': 'รายการสินค้า',
     },
     'zh': {
+      'confirm': '确认',
+      'printer_backend': '打印方式',
+      'printer_usb': 'USB / 商米内置（离线）',
+      'printer_feie': '飞鹅云（需要联网）',
+      'feie_hint':
+          '先在飞鹅开发者后台绑定小票机。UKEY 不是打印机标签上的 KEY。云端接收不等于已出纸；网络不明时先查后台，避免重复打印。',
+      'feie_region': '账号地区',
+      'feie_user': '开发者账号 USER',
+      'feie_ukey': 'UKEY（加密保存）',
+      'feie_sn': '打印机 SN（9 位数字）',
+      'feie_check': '检查状态',
+      'feie_test': '打印测试小票',
+      'feie_order': '查询最后一张云小票',
+      'feie_invalid': '请填写 USER、UKEY 和 9 位 SN。',
+      'feie_key_error': '无法读取或保存加密密钥，请重新输入 UKEY。',
+      'feie_network_error': '云服务请求失败，请检查网络、地区、账号和绑定设备。',
+      'feie_online': '打印机在线，可以发送小票。',
+      'feie_offline': '打印机离线，未发送小票。',
+      'feie_abnormal': '打印机异常，请检查缺纸等状态。',
+      'feie_accepted': '飞鹅云已接收，待确认出纸；可在设置查询。',
+      'feie_uncertain': '上次云打印结果不明，已阻止重发。请先查飞鹅后台与纸张，再到设置解除。',
+      'feie_printed': '飞鹅云已确认最后一单打印完成。',
+      'feie_queued': '最后一单尚未确认出纸，请勿重复发送。',
+      'feie_no_order': '当前账号地区没有可查询的云小票。',
+      'feie_resolve': '处理结果不明的云打印',
+      'feie_resolve_hint': '仅在已核对飞鹅后台与纸张后确认。解除后允许再次发送，可能造成重复出纸；此操作不会取消云端订单。',
+      'feie_resolved': '已解除重发保护，请按核对结果处理购物车。',
       'product_camera_settings': '商品摄像头',
       'product_camera_enabled': '启用商品识别摄像头',
       'product_camera_hint': '仅在安装朝向秤盘商品的摄像头后开启',
@@ -189,9 +247,42 @@ class AppTranslations {
       'customer_cart_title': '购物车',
     },
     'en': {
+      'confirm': 'Confirm',
+      'printer_backend': 'Printer type',
+      'printer_usb': 'USB / SUNMI built-in (offline)',
+      'printer_feie': 'Feie Cloud (internet required)',
+      'feie_hint':
+          'Bind a receipt printer in the Feie developer portal first. UKEY is not the printer label KEY. Cloud acceptance is not paper confirmation. Check the portal before retrying uncertain orders.',
+      'feie_region': 'Account region',
+      'feie_user': 'Developer account USER',
+      'feie_ukey': 'UKEY (encrypted storage)',
+      'feie_sn': 'Printer SN (9 digits)',
+      'feie_check': 'Check status',
+      'feie_test': 'Print test receipt',
+      'feie_order': 'Check last cloud receipt',
+      'feie_invalid': 'Enter USER, UKEY and a 9-digit SN.',
+      'feie_key_error': 'Encrypted key unavailable. Re-enter UKEY.',
+      'feie_network_error':
+          'Cloud request failed. Check network, region, credentials and printer binding.',
+      'feie_online': 'Printer online, ready to submit.',
+      'feie_offline': 'Printer offline; receipt not submitted.',
+      'feie_abnormal': 'Printer abnormal; check paper and device.',
+      'feie_accepted':
+          'Feie accepted; paper confirmation pending. Check in Settings.',
+      'feie_uncertain':
+          'Cloud result uncertain; resend blocked. Check Feie portal and paper, then resolve in Settings.',
+      'feie_printed': 'Feie confirms the last order was printed.',
+      'feie_queued': 'Last order not confirmed printed. Do not resend.',
+      'feie_no_order': 'No cloud receipt for this account and region.',
+      'feie_resolve': 'Resolve uncertain cloud print',
+      'feie_resolve_hint':
+          'Confirm only after checking the Feie portal and paper. This allows another submission and may duplicate a ticket. It does not cancel cloud orders.',
+      'feie_resolved':
+          'Resend guard cleared. Handle the cart based on your verification.',
       'product_camera_settings': 'Product Camera',
       'product_camera_enabled': 'Enable product camera',
-      'product_camera_hint': 'Turn on only when a camera points at products on the scale',
+      'product_camera_hint':
+          'Turn on only when a camera points at products on the scale',
       'ai_camera': 'Product Camera',
       'ai_capture': 'Capture Product',
       'ai_camera_error': 'Camera or image analysis failed',
@@ -281,6 +372,6 @@ class AppTranslations {
       'zero': 'Zero',
       'customer_welcome': 'Welcome to our store',
       'customer_cart_title': 'My Cart',
-    }
+    },
   };
 }

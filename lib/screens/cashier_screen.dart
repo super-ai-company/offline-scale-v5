@@ -463,7 +463,7 @@ class _CashierScreenState extends State<CashierScreen> {
       _printerConnected = ok;
     });
     _showSnack(
-      lp.tr(ok ? 'print_success' : 'print_fail'),
+      lp.tr(_print.resultKey),
       type: ok ? ToastType.success : ToastType.error,
     );
     if (ok) _clearCart();
@@ -883,7 +883,8 @@ class _CashierScreenState extends State<CashierScreen> {
                     const SizedBox(height: 8),
                     RichText(
                       text: TextSpan(
-                        style: const TextStyle(fontSize: 18, color: Color(0xFF64748B)),
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          fontSize: 18, color: const Color(0xFF64748B)),
                         children: [
                           TextSpan(text: item.weight.toStringAsFixed(3), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0284C7), fontSize: 22)),
                           const TextSpan(text: ' '),
