@@ -105,7 +105,7 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
         }
     }
 
-    private void closeSerial() {
+    private synchronized void closeSerial() {
         readerGeneration++;
         reading = false;
         if (readThread != null) {
@@ -154,7 +154,7 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
                     int n = readerInput.read(buf);
                     if (n <= 0) continue;
                     if (generation != readerGeneration) break;
-                    appendAndParse(buf, n);
+                    appendAndParse(buf, n, generation);
                 } catch (IOException e) {
                     if (reading) {
                         Log.e(TAG, PATCH_VER + " read failed", e);
@@ -173,7 +173,8 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
         closeSerial();
     }
 
-    private synchronized void appendAndParse(byte[] chunk, int size) {
+    private synchronized void appendAndParse(byte[] chunk, int size, long generation) {
+        if (generation != readerGeneration) return;
         byteBuffer.write(chunk, 0, size);
         byte[] accumulated = byteBuffer.toByteArray();
         byteBuffer.reset();
@@ -192,7 +193,7 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
                     && (accumulated[i + 13] & 0xFF) == 0x03
                     && (accumulated[i + 14] & 0xFF) == 0x04) {
                 byte[] frame = Arrays.copyOfRange(accumulated, i, i + FRAME_LEN);
-                emitFrame(frame);
+                emitFrame(frame, generation);
                 frameCount++;
                 i += FRAME_LEN;
             } else {
@@ -205,7 +206,7 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
         }
     }
 
-    private void emitFrame(byte[] frame) {
+    private void emitFrame(byte[] frame, long generation) {
         char state1 = (char) (frame[2] & 0xFF);
         boolean isPlus = (frame[3] & 0xFF) != '-';
         String weightString = new String(frame, 4, 6, StandardCharsets.US_ASCII);
@@ -240,7 +241,7 @@ public class WeightChannel implements MethodChannel.MethodCallHandler, EventChan
         // Per-frame logs are intentionally disabled to avoid logcat spam.
 
         mainHandler.post(() -> {
-            if (eventSink == null) return;
+            if (eventSink == null || generation != readerGeneration) return;
             Map<String, Object> map = new HashMap<>();
             map.put("raw", rawHex);
             map.put("kg", fKg);
