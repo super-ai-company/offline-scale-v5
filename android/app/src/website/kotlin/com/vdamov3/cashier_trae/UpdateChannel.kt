@@ -29,6 +29,7 @@ class UpdateChannel(private val activity: MainActivity) : MethodChannel.MethodCa
     @Suppress("DEPRECATION")
     private fun versionCode(info: android.content.pm.PackageInfo): Long = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "distribution") { result.success("website"); return }
         if (call.method == "version") { result.success(current().versionName); return }
         if (call.method != "install") { result.notImplemented(); return }
         if (Build.VERSION.SDK_INT >= 26 && !activity.packageManager.canRequestPackageInstalls()) {

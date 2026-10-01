@@ -26,9 +26,22 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("website") {
+            dimension = "distribution"
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        create("play") {
+            dimension = "distribution"
+            applicationId = "com.superaicompany.offlinescale"
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // Website retains its legacy signer. Play candidates remain unsigned
+            // until a production upload key is configured; never use a debug key.
             isMinifyEnabled = false
             isShrinkResources = false
         }

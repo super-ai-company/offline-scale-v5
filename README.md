@@ -47,7 +47,7 @@
 flutter pub get
 flutter analyze
 flutter test
-flutter build apk --release
+flutter build apk --release --flavor website
 ```
 
 本次验收环境：Flutter 3.47.5 / Dart 3.13.4，JDK 17 兼容字节码，现有 Gradle 8.14 / AGP 8.11.1。发布包位于 `build/app/outputs/flutter-apk/app-release.apk`。硬件源码位于 `android/app/src/main`，云打印实现位于 `lib/services/feie_service.dart`。
