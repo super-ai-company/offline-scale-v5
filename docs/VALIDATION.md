@@ -40,8 +40,8 @@ The upstream v1.1.1 release records successful Rockchip serial weighing and USB 
 
 ## 尚待验收 / Pending
 
-1. 当前电子秤 ADB 通路恢复后，使用相同发布 APK 覆盖安装，确认菜单/设置保留、重量稳定入单、去皮与置零、关闭打印的销售流程。
-2. 指定本地飞鹅小票机 SN 后，查询在线状态、打印中英文测试小票、查询云端已打印、人工核对纸张名称和金额。
+1. 去皮与置零、关闭打印的销售流程仍待实测；当前设备覆盖安装、菜单/设置保留和稳定重量入单已通过。
+2. 已指定本地飞鹅 58 mm 小票机，真实在线查询、App 设置保存、中英文测试单发送和云端已打印查询通过；人工纸张核对待完成。
 3. 原 USB 小票机、商米内置机分别验收；当前无商米设备证据。
 4. 指定飞鹅型号的泰文字库验收；未测前不宣称兼容。
 5. 云端离线/缺纸与网络异常的真机演练；模拟测试不能代替这些实测。
@@ -55,3 +55,11 @@ The candidate remains a prerelease until current-device installation, scale beha
 采用同一证书仅用于保持 GitHub 侧载升级兼容，release 构建不启用调试。CI 验证会使用临时环境的独立 debug keystore，**CI 构建不作为用户升级附件**。正式分发附件由持有原签名的本机生成；应用商店签名迁移未实施。
 
 The distributed artifact uses the existing local signer. CI-generated APKs have a different temporary signer and are not distributed as upgrades.
+
+## 2026-10-02 真机补充 / Device update
+
+- rk3568_r / Android 11，1920×1080：同一发布 APK 覆盖安装成功，1.2.0(8)，保留中文、菜单、默认单价与串口设置。
+- 稳定 0.460 kg × 5242.00 THB/kg = 2411.32 THB，购物车金额正确，测试未结算，现为空购物车。
+- 飞鹅 58 mm 机：应用内真实在线查询、加密设置保存、单次中英文测试小票云端接收、查询最后一单“打印完成”均通过。云端报告不替代人工纸张核对。
+
+The distributed APK was installed in place on the current scale with existing settings preserved. Stable weight and cart arithmetic were verified without checkout. The app saved Feie configuration, submitted one bilingual test and received a cloud printed confirmation. Physical paper inspection and tare/zero acceptance remain pending. Real account, printer identifiers and private device screenshots are withheld from this public record.
