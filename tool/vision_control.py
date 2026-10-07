@@ -2,6 +2,7 @@
 """Isolated debug app control; requires explicit device and JSON input, no secrets."""
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -22,7 +23,9 @@ try:
     request = json.load(sys.stdin)
     if not isinstance(request, dict) or not isinstance(request.get("action"), str):
         raise ValueError("Expected a JSON object with action")
-    request["request_id"] = str(uuid.uuid4())
+    request.setdefault("request_id", str(uuid.uuid4()))
+    if not isinstance(request["request_id"], str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,64}", request["request_id"]):
+        raise ValueError("Invalid request_id")
     encoded = json.dumps(request, allow_nan=False).encode()
     if len(encoded) > 200000:
         raise ValueError("Request too large")

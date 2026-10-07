@@ -73,3 +73,12 @@ The distributed APK was installed in place on the current scale with existing se
 ## v1.2.2 update acceptance
 
 Owner confirmed v1.2.1 Wi-Fi-off local printing on 2026-10-02. This supersedes the earlier deferred offline hardware test; physical fallback faults, SUNMI hardware and Thai cloud fonts remain unverified. v1.2.2 adds manual stable-release checking and Android-confirmed updates. Metadata rejects draft/prerelease/older releases, unofficial URLs, missing SHA-256, ambiguous assets and invalid sizes; native APK checks enforce byte count, digest, package, signing certificates and higher versionCode.
+
+
+## 2026-10-07 商品识别开发分支 / Produce-recognition development branch
+
+`feat/offline-produce-recognition` 为独立开发候选，正式 `main`、`v1.2.3` 和官网链接保持不变。本机 `flutter analyze` 无问题；`flutter test` 50 项通过、1 项原有预览跳过；独立 ARM64 debug APK 构建成功。新增验收覆盖相似/未知拒判、样本覆盖不足、连续帧、重量变化作废、人工覆盖、镜头样本隔离、无摄像头继续收银，以及 JSON 命令默认 dry-run 和跨状态查询后重复采样请求不重写。
+
+用户确认当前镜头朝天，可以后续加配件。本轮没有真实蔬果准确率、朝秤盘配件、识别流程断网或实体新票据验收。无线独立测试包安装在限定等待后超时，核查未安装 `.visiondev`，未覆盖正式应用；不得把 APK 构建成功说成设备安装成功。采样及实际验收目标见 [唯一实施计划](FEIE-PLAN.md)。
+
+Local analysis, 50 tests (one existing preview skip), and isolated debug APK compilation pass. Hardware installation timed out and the isolated package was not installed. The current camera points upward; real produce accuracy and the new offline hardware flow remain unverified. The stable release is unchanged. The JSON command tests validate control/idempotency, not recognition accuracy.

@@ -59,13 +59,32 @@ class ProduceDiagnosticService {
       if (id == null || !RegExp(r'^[a-zA-Z0-9-]{1,64}$').hasMatch(id)) return;
       final prefs = await SharedPreferences.getInstance();
       final responseFile = File('$_directory/response.json');
-      if (prefs.getString('produce_diagnostic_last_id') == id) {
-        if (!await responseFile.exists()) {
+      final completedSamples =
+          prefs.getStringList('produce_diagnostic_sample_ids') ?? <String>[];
+      if (prefs.getString('produce_diagnostic_last_id') == id ||
+          completedSamples.contains(id)) {
+        Map<String, dynamic>? previous;
+        if (await responseFile.exists()) {
+          try {
+            previous =
+                jsonDecode(await responseFile.readAsString())
+                    as Map<String, dynamic>;
+          } catch (_) {
+            /* A broken reply cannot authorize another sample write. */
+          }
+        }
+        if (previous?['request_id'] != id) {
           await responseFile.writeAsString(
             jsonEncode({'request_id': id, 'code': 'outcome_unknown'}),
           );
         }
         return;
+      }
+      if (request['action'] == 'capture_sample' && request['apply'] == true) {
+        await prefs.setStringList('produce_diagnostic_sample_ids', [
+          ...completedSamples,
+          id,
+        ]);
       }
       // Mark before mutation. A lost reply never blindly repeats enrolment.
       await prefs.setString('produce_diagnostic_last_id', id);
