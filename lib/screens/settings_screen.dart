@@ -1,4 +1,5 @@
 import '../models/sale_precision.dart';
+import 'package:camera/camera.dart';
 import '../widgets/app_update_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +24,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _defaultPriceCtrl = TextEditingController();
   bool _printEnabled = true;
   bool _productCameraEnabled = false;
+  bool _autoRecognition = false;
+  bool _autoSelect = false;
+  String? _cameraName;
+  List<CameraDescription> _cameras = [];
   final _feieUserCtrl = TextEditingController();
   final _feieSnCtrl = TextEditingController();
   final _feieKeyCtrl = TextEditingController();
@@ -63,6 +68,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _truncate = precision.truncate;
       _printEnabled = prefs.getBool('print_enabled') ?? true;
       _productCameraEnabled = prefs.getBool('product_camera_enabled') ?? false;
+      _autoRecognition = prefs.getBool('produce_auto_enabled') ?? false;
+      _autoSelect = prefs.getBool('produce_auto_select') ?? false;
+      _cameraName = prefs.getString('produce_camera_name');
       _feieEnabled = prefs.getBool('feie_enabled') ?? false;
       _region = prefs.getString('feie_region') ?? 'jp';
       _feieUserCtrl.text = prefs.getString('feie_user') ?? '';
@@ -130,6 +138,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setDouble('default_weight_price', defaultPrice);
     await prefs.setBool('print_enabled', _printEnabled);
     await prefs.setBool('product_camera_enabled', _productCameraEnabled);
+    await prefs.setBool(
+      'produce_auto_enabled',
+      _productCameraEnabled && _autoRecognition,
+    );
+    await prefs.setBool('produce_auto_select', _autoSelect);
+    if (_cameraName == null) {
+      await prefs.remove('produce_camera_name');
+    } else {
+      await prefs.setString('produce_camera_name', _cameraName!);
+    }
     if (!mounted) return;
     TopToast.show(context, lp.tr('settings_saved'), type: ToastType.success);
   }
@@ -495,6 +513,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (value) =>
                         setState(() => _productCameraEnabled = value),
                   ),
+                  if (_productCameraEnabled) ...[
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.videocam),
+                      label: Text(lp.tr('produce_find_cameras')),
+                      onPressed: () async {
+                        try {
+                          final cameras = await availableCameras();
+                          if (mounted) setState(() => _cameras = cameras);
+                          if (cameras.isEmpty && context.mounted) {
+                            TopToast.show(
+                              context,
+                              lp.tr('produce_camera_error'),
+                            );
+                          }
+                        } catch (_) {
+                          if (context.mounted) {
+                            TopToast.show(
+                              context,
+                              lp.tr('produce_camera_error'),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    if (_cameras.isNotEmpty)
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('camera$_cameraName${_cameras.length}'),
+                        initialValue: _cameras.any((c) => c.name == _cameraName)
+                            ? _cameraName
+                            : '',
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: lp.tr('produce_camera_select'),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: '',
+                            child: Text(lp.tr('produce_camera_default')),
+                          ),
+                          for (var i = 0; i < _cameras.length; i++)
+                            DropdownMenuItem(
+                              value: _cameras[i].name,
+                              child: Text(
+                                '${lp.tr('produce_camera_select')} ${i + 1} · ${_cameras[i].name}',
+                              ),
+                            ),
+                        ],
+                        onChanged: (value) => setState(
+                          () => _cameraName = value == '' ? null : value,
+                        ),
+                      ),
+
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(lp.tr('produce_enable')),
+                      subtitle: Text(lp.tr('produce_enable_hint')),
+                      value: _autoRecognition,
+                      onChanged: (value) =>
+                          setState(() => _autoRecognition = value),
+                    ),
+                    if (_autoRecognition)
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(lp.tr('produce_auto_select')),
+                        subtitle: Text(lp.tr('produce_auto_select_hint')),
+                        value: _autoSelect,
+                        onChanged: (value) =>
+                            setState(() => _autoSelect = value),
+                      ),
+                    Text(lp.tr('produce_training_hint')),
+                  ],
                 ],
               ),
               const SizedBox(height: 24),
