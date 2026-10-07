@@ -46,6 +46,7 @@ class AutoProducePanelState extends State<AutoProducePanel>
   bool _stopped = false;
   bool _fixedCamera = false;
   bool _cameraFailed = false;
+  int _cameraEpoch = 0;
   int _attempts = 0;
   ProduceDecision? _decision;
   String _status = 'waiting_weight';
@@ -72,6 +73,7 @@ class AutoProducePanelState extends State<AutoProducePanel>
   }
 
   Future<void> _open() async {
+    final epoch = ++_cameraEpoch;
     try {
       final camera = await ProductCameraService.select();
       _fixedCamera =
@@ -85,7 +87,7 @@ class AutoProducePanelState extends State<AutoProducePanel>
         enableAudio: false,
       );
       await controller.initialize();
-      if (!mounted || _stopped || !_foreground) {
+      if (!mounted || _stopped || !_foreground || epoch != _cameraEpoch) {
         await controller.dispose();
         return;
       }
@@ -94,7 +96,7 @@ class AutoProducePanelState extends State<AutoProducePanel>
         _cameraFailed = false;
       });
     } catch (_) {
-      if (mounted && !_stopped) {
+      if (mounted && !_stopped && epoch == _cameraEpoch) {
         setState(() {
           _status = 'camera_error';
           _cameraFailed = true;
@@ -115,6 +117,7 @@ class AutoProducePanelState extends State<AutoProducePanel>
 
   Future<void> stop() async {
     _stopped = true;
+    _cameraEpoch++;
     cycle.invalidate();
     _timer?.cancel();
     await _opening;
@@ -126,6 +129,7 @@ class AutoProducePanelState extends State<AutoProducePanel>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _foreground = state == AppLifecycleState.resumed;
+    _cameraEpoch++;
     cycle.invalidate();
     _decision = null;
     _attempts = 0;
