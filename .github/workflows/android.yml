@@ -25,6 +25,8 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - name: Compile isolated produce-recognition debug app
+        run: flutter build apk --debug --flavor website --target-platform android-arm64
       - name: Compile Android release (CI signing is not the distributed signer)
         run: flutter build apk --release --flavor website
       - name: Compile Play candidate (not approved for upload)

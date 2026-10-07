@@ -1,6 +1,32 @@
 class AppTranslations {
   static const Map<String, Map<String, String>> locale = {
     'th': {
+      'produce_needs_camera':
+          'เลือกกล้องคงที่ในการตั้งค่าและถ่ายตัวอย่างใหม่ก่อนเลือกอัตโนมัติ',
+      'produce_find_cameras': 'ค้นหากล้องที่เชื่อมต่อ',
+      'produce_camera_select': 'กล้องสินค้า',
+      'produce_camera_default': 'กล้องเริ่มต้น (ควรเลือกกล้องอุปกรณ์เสริม)',
+      'produce_enable': 'รู้จำสินค้าอัตโนมัติ (ออฟไลน์)',
+      'produce_enable_hint':
+          'รู้จำเมื่อน้ำหนักนิ่ง 1 วินาที ปิดโดยค่าเริ่มต้น ไม่คิดเงินหรือพิมพ์อัตโนมัติ',
+      'produce_auto_select': 'เลือกสินค้าที่ตรงกันสูงอัตโนมัติ (ทดลอง)',
+      'produce_auto_select_hint':
+          'ค่าเริ่มต้นต้องแตะยืนยัน เลือกอัตโนมัติต้องมี 2 ชนิดขึ้นไป ตัวอย่างละ 5 ภาพ 3 เฟรมตรงกัน คะแนน ≥0.94 และห่าง ≥0.08 ต้องทดสอบสินค้าจริงก่อน',
+      'produce_training_hint':
+          'จัดการสินค้า → ถ่ายตัวอย่าง เริ่ม 20–40 ภาพต่อชนิด เปลี่ยนมุม จำนวน และแสง กล้องต้องเห็นถาด ครั้งละชนิดเดียว ไม่ต้องใช้ API หรืออินเทอร์เน็ต เปลี่ยนกล้องต้องถ่ายตัวอย่างใหม่',
+      'produce_waiting_weight': 'รอน้ำหนักนิ่งเพื่อรู้จำ',
+      'produce_scanning': 'กำลังตรวจภาพต่อเนื่อง…',
+      'produce_confirm': 'ตรวจสินค้าแล้วแตะเลือก',
+      'produce_selected': 'เลือกสินค้าแล้ว ตรวจสอบก่อนคิดเงิน',
+      'produce_unknown': 'คะแนนไม่เพียงพอ โปรดเลือกเอง',
+      'produce_ambiguous': 'สินค้าคล้ายกัน โปรดยืนยันเอง',
+      'produce_needs_samples': 'ตัวอย่างไม่พอ ต้องเลือกเอง',
+      'produce_no_samples': 'ถ่ายตัวอย่างในจัดการสินค้าก่อน',
+      'produce_camera_error':
+          'กล้องใช้ไม่ได้หรือมืดเกินไป ยังคิดเงินด้วยมือได้',
+      'produce_manual': 'เลือกเองแล้ว ยกสินค้าออกเพื่อเริ่มใหม่',
+      'produce_retry': 'รู้จำใหม่',
+      'produce_similarity': 'คะแนนความคล้าย ไม่ใช่ความแม่นยำ',
       'precision_settings': 'ทศนิยมและเงินสด',
       'weight_digits': 'ทศนิยมน้ำหนัก (kg)',
       'money_digits': 'ทศนิยมจำนวนเงิน THB',
@@ -147,6 +173,29 @@ class AppTranslations {
       'customer_cart_title': 'รายการสินค้า',
     },
     'zh': {
+      'produce_needs_camera': '自动选择前请在设置固定摄像头，并重新采样',
+      'produce_find_cameras': '检测已连接摄像头',
+      'produce_camera_select': '商品摄像头',
+      'produce_camera_default': '默认镜头（建议固定选择配件）',
+      'produce_enable': '自动识别（离线）',
+      'produce_enable_hint': '重量稳定1秒后识别；默认关闭，不自动结账或打印。',
+      'produce_auto_select': '高匹配时自动选择商品（试验）',
+      'produce_auto_select_hint':
+          '默认仍需点选。开启后需至少两类商品、每类5份样本、3帧一致；相似度≥0.94且领先≥0.08。请先验收实际商品。',
+      'produce_training_hint':
+          '商品管理→拍摄样本。建议每种20–40张，改变角度、数量和光线；摄像头固定朝秤盘，一次只放一种商品。无需API或联网。换镜头需重新采样。',
+      'produce_waiting_weight': '自动识别：等待稳定重量',
+      'produce_scanning': '正在核对连续画面…',
+      'produce_confirm': '请核对商品后点选',
+      'produce_selected': '商品已选中，请人工核对后结账',
+      'produce_unknown': '匹配不足，请手动选择商品',
+      'produce_ambiguous': '商品相似，请手动确认',
+      'produce_needs_samples': '样本不足，仅供人工点选',
+      'produce_no_samples': '请先在商品管理拍摄样本',
+      'produce_camera_error': '摄像头不可用或光线不足，可继续手动收银',
+      'produce_manual': '已人工指定；移走商品后重新识别',
+      'produce_retry': '重新识别',
+      'produce_similarity': '相似度评分，不代表识别准确率',
       'precision_settings': '精度与现金金额',
       'weight_digits': '重量小数位（kg）',
       'money_digits': '泰铢金额小数位',
@@ -286,6 +335,32 @@ class AppTranslations {
       'customer_cart_title': '购物车',
     },
     'en': {
+      'produce_needs_camera':
+          'Select a fixed camera in Settings and capture new samples before auto-selection',
+      'produce_find_cameras': 'Find connected cameras',
+      'produce_camera_select': 'Product camera',
+      'produce_camera_default': 'Default camera (select a fixed accessory)',
+      'produce_enable': 'Automatic recognition (offline)',
+      'produce_enable_hint':
+          'Recognize after weight is stable for 1 second. Off by default; never checks out or prints automatically.',
+      'produce_auto_select': 'Auto-select strong matches (experimental)',
+      'produce_auto_select_hint':
+          'Default: tap to confirm. Auto-selection needs 2+ categories, 5+ samples each, 3 agreeing frames, similarity ≥0.94 and margin ≥0.08. Validate real produce first.',
+      'produce_training_hint':
+          'Products → capture samples. Start with 20–40 per category, varying angle, quantity and light. Fix the camera over the tray; one category at a time. No API or internet needed. Capture new samples after changing cameras.',
+      'produce_waiting_weight': 'Recognition: waiting for stable weight',
+      'produce_scanning': 'Checking consecutive frames…',
+      'produce_confirm': 'Check the product and tap to select',
+      'produce_selected': 'Product selected. Verify before checkout.',
+      'produce_unknown': 'Insufficient match. Select manually.',
+      'produce_ambiguous': 'Similar products. Confirm manually.',
+      'produce_needs_samples': 'More samples needed; manual selection only',
+      'produce_no_samples': 'Capture samples in Products first',
+      'produce_camera_error':
+          'Camera unavailable or too dark. Manual checkout remains available.',
+      'produce_manual': 'Manual override. Remove goods to start a new scan.',
+      'produce_retry': 'Retry recognition',
+      'produce_similarity': 'Similarity score, not recognition accuracy',
       'precision_settings': 'Precision and cash amounts',
       'weight_digits': 'Weight decimals (kg)',
       'money_digits': 'THB amount decimals',

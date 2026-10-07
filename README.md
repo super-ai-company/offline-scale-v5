@@ -1,5 +1,7 @@
 # Offline Scale V5 · 离线电子秤收银
 
+**本分支为商品自动识别开发候选版，正式版仍为 v1.2.3。** 无需申请云 API；离线采样及重量稳定后识别，默认人工确认。实施、采样与真机验收门槛见 [唯一实施计划](docs/FEIE-PLAN.md#摄像头商品自动识别开发分支--produce-recognition-branch)。使用 `flutter build apk --debug --flavor website` 构建独立 `.visiondev` 测试包，不能覆盖生产版。
+
 **Android scale checkout with local menus, a permanent price keypad and receipt printing.**
 
 **面向 Android 收银秤的离线称重收银：本地菜单、常驻数字键盘、购物车和小票打印。**

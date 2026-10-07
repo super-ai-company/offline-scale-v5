@@ -17,6 +17,9 @@ import '../l10n/locale_provider.dart';
 import 'menu_screen.dart';
 import 'settings_screen.dart';
 import 'ai_camera_screen.dart';
+import '../widgets/auto_produce_panel.dart';
+import '../services/produce_diagnostic_service.dart';
+import '../services/product_camera_service.dart';
 
 class CashierScreen extends StatefulWidget {
   const CashierScreen({super.key});
@@ -54,6 +57,14 @@ class _CashierScreenState extends State<CashierScreen> {
   bool _printEnabled = true;
   bool _productCameraEnabled = false;
   bool _printing = false;
+  bool _autoRecognition = false;
+  bool _autoSelect = false;
+  bool _cameraPaused = false;
+  bool _selectedByCamera = false;
+  bool _recognitionLocked = false;
+  bool _trayHadLoad = false;
+  final _autoCameraKey = GlobalKey<AutoProducePanelState>();
+  ProduceDiagnosticService? _diagnostics;
   int _fixedQty = 1;
 
   final DisplayManager _displayManager = DisplayManager();
@@ -96,6 +107,50 @@ class _CashierScreenState extends State<CashierScreen> {
       }
     });
     _setupSecondaryDisplay();
+    _diagnostics = ProduceDiagnosticService(
+      state: () => {
+        'kg': _currentKg,
+        'stable': _weightStable,
+        'scale_connected': _scaleConnected,
+        'valid': _weightValid,
+        'selected_item_id': _selectedItem?.id,
+        'printing': _printing,
+        'recognition_locked': _recognitionLocked,
+        'recognition': _autoCameraKey.currentState?.diagnostics,
+      },
+      configure: () async {
+        if (_printing ||
+            !mounted ||
+            ModalRoute.of(context)?.isCurrent != true) {
+          throw StateError('Cashier busy');
+        }
+        await _pauseCamera();
+        await _loadProductCameraSetting();
+        _resumeCamera();
+      },
+      select: (item) {
+        if (!mounted ||
+            _printing ||
+            ModalRoute.of(context)?.isCurrent != true) {
+          throw StateError('Cashier busy');
+        }
+        _selectMenuItem(item);
+      },
+      capture: () async {
+        if (!mounted ||
+            _printing ||
+            ModalRoute.of(context)?.isCurrent != true) {
+          throw StateError('Cashier busy');
+        }
+        await _pauseCamera();
+        try {
+          return await ProductCameraService.captureEmbedding();
+        } finally {
+          _resumeCamera();
+        }
+      },
+    );
+    unawaited(_diagnostics!.start());
   }
 
   Future<void> _setupSecondaryDisplay() async {
@@ -148,6 +203,7 @@ class _CashierScreenState extends State<CashierScreen> {
 
   @override
   void dispose() {
+    _diagnostics?.close();
     _priceCtrl.dispose();
     _localeProvider?.removeListener(_syncCartToSecondaryDisplay);
     _weightSub?.cancel();
@@ -214,6 +270,9 @@ class _CashierScreenState extends State<CashierScreen> {
   }
 
   void _pressPriceKey(String key) {
+    _autoCameraKey.currentState?.manualOverride();
+    _selectedByCamera = false;
+    _recognitionLocked = true;
     final current = _priceCtrl.text;
     String next;
     if (key == 'C') {
@@ -258,11 +317,25 @@ class _CashierScreenState extends State<CashierScreen> {
   Future<void> _loadProductCameraSetting() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
-      setState(
-        () => _productCameraEnabled =
-            prefs.getBool('product_camera_enabled') ?? false,
-      );
+      setState(() {
+        _productCameraEnabled =
+            prefs.getBool('product_camera_enabled') ?? false;
+        _autoRecognition = prefs.getBool('produce_auto_enabled') ?? false;
+        _autoSelect = prefs.getBool('produce_auto_select') ?? false;
+      });
     }
+  }
+
+  Future<void> _pauseCamera() async {
+    await _autoCameraKey.currentState?.stop();
+    if (mounted) {
+      setState(() => _cameraPaused = true);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+  }
+
+  void _resumeCamera() {
+    if (mounted) setState(() => _cameraPaused = false);
   }
 
   Future<void> _connectScale() async {
@@ -289,6 +362,30 @@ class _CashierScreenState extends State<CashierScreen> {
           if (!mounted) return;
           _lastWeightAt = DateTime.now();
           setState(() {
+            if (data.valid &&
+                data.unit.toLowerCase() == 'kg' &&
+                data.kg > .005) {
+              if (!_trayHadLoad &&
+                  _productCameraEnabled &&
+                  _autoRecognition &&
+                  !_recognitionLocked) {
+                _selectedItem = MenuItem.quickWeigh;
+                _setPriceText(_defaultPrice);
+                _selectedByCamera = false;
+              }
+              _trayHadLoad = true;
+            }
+            if (data.valid &&
+                data.unit.toLowerCase() == 'kg' &&
+                data.kg <= .005) {
+              if (_trayHadLoad) _recognitionLocked = false;
+              _trayHadLoad = false;
+              if (_selectedByCamera) {
+                _selectedItem = MenuItem.quickWeigh;
+                _setPriceText(_defaultPrice);
+                _selectedByCamera = false;
+              }
+            }
             _scaleConnected = true;
             _currentKg = data.kg;
             _weightStable = data.stable;
@@ -343,7 +440,10 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
-  void _selectMenuItem(MenuItem item) {
+  void _selectMenuItem(MenuItem item, {bool fromCamera = false}) {
+    if (!fromCamera) _autoCameraKey.currentState?.manualOverride();
+    _selectedByCamera = fromCamera;
+    _recognitionLocked = true;
     setState(() {
       _selectedItem = item;
       _fixedQty = 1;
@@ -361,10 +461,13 @@ class _CashierScreenState extends State<CashierScreen> {
       _showSnack(lp.tr('ai_no_samples'), type: ToastType.error);
       return;
     }
+    await _pauseCamera();
+    if (!mounted) return;
     final embedding = await Navigator.push<List<double>>(
       context,
       MaterialPageRoute(builder: (_) => const AiCameraScreen()),
     );
+    _resumeCamera();
     if (embedding == null || !mounted) return;
     final matches = await AiRecognitionService().recognize(
       embedding,
@@ -407,6 +510,8 @@ class _CashierScreenState extends State<CashierScreen> {
   }
 
   void _addToCart(LocaleProvider lp) {
+    _autoCameraKey.currentState?.manualOverride();
+    _recognitionLocked = true;
     if (_selectedItem == null || _printing) return;
     final item = _selectedItem!;
     if (_enteredPrice <= 0) {
@@ -474,7 +579,8 @@ class _CashierScreenState extends State<CashierScreen> {
     _loadPrintSetting();
   }
 
-  double get _total => _cart.fold<int>(0, (sum, e) => sum + (e.subtotal * 100).round()) / 100;
+  double get _total =>
+      _cart.fold<int>(0, (sum, e) => sum + (e.subtotal * 100).round()) / 100;
 
   Future<void> _printReceipt(LocaleProvider lp) async {
     if (_printing) return;
@@ -542,7 +648,40 @@ class _CashierScreenState extends State<CashierScreen> {
               flex: 7,
               child: Row(
                 children: [
-                  Expanded(flex: 3, child: _buildMenuPanel(lp)),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        if (_productCameraEnabled &&
+                            _autoRecognition &&
+                            !_cameraPaused)
+                          AutoProducePanel(
+                            key: _autoCameraKey,
+                            kg: _currentKg,
+                            ready:
+                                _weightValid &&
+                                _weightStable &&
+                                _scaleConnected,
+                            blocked: _printing,
+                            selectionLocked: _recognitionLocked,
+                            autoSelect: _autoSelect,
+                            items: _menuItems,
+                            onSelect: (item) =>
+                                _selectMenuItem(item, fromCamera: true),
+                            onNewCycle: () {
+                              if (!_selectedByCamera) return;
+                              _selectMenuItem(
+                                MenuItem.quickWeigh,
+                                fromCamera: true,
+                              );
+                              _selectedByCamera = false;
+                              _recognitionLocked = false;
+                            },
+                          ),
+                        Expanded(child: _buildMenuPanel(lp)),
+                      ],
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(flex: 4, child: _buildWeightSection(lp)),
                   const SizedBox(width: 12),
@@ -646,21 +785,30 @@ class _CashierScreenState extends State<CashierScreen> {
           icon: const Icon(Icons.restaurant_menu_rounded),
           tooltip: lp.tr('menu_manage'),
           onPressed: () async {
+            await _pauseCamera();
+            if (!mounted) return;
             await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const MenuScreen()),
             );
-            _loadMenu();
+            await _loadMenu();
+            _resumeCamera();
           },
         ),
         IconButton(
           icon: const Icon(Icons.settings_rounded),
           tooltip: lp.tr('settings'),
           onPressed: () async {
+            await _pauseCamera();
+            if (!mounted) return;
             await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => SettingsScreen(hasPendingSale: _cart.isNotEmpty)),
+              MaterialPageRoute(
+                builder: (_) =>
+                    SettingsScreen(hasPendingSale: _cart.isNotEmpty),
+              ),
             );
+            _resumeCamera();
             _loadPrintSetting();
             _loadProductCameraSetting();
             _loadDefaultPrice();

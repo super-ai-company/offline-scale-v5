@@ -15,7 +15,9 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('empty menu still opens ready to price a weighing item', (tester) async {
+  testWidgets('empty menu still opens ready to price a weighing item', (
+    tester,
+  ) async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
     final directory = await tester.runAsync(() async {
@@ -34,7 +36,12 @@ void main() {
 
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1;
-    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/camera'),
+      (call) async => [],
+    );
     messenger.setMockMethodCallHandler(
       const MethodChannel('cashier/weight'),
       (call) async => call.method == 'open' ? false : null,
@@ -49,11 +56,15 @@ void main() {
     );
 
     try {
-      await tester.pumpWidget(ChangeNotifierProvider(
-        create: (_) => LocaleProvider(),
-        child: const MaterialApp(home: CashierScreen()),
-      ));
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pumpWidget(
+        ChangeNotifierProvider(
+          create: (_) => LocaleProvider(),
+          child: const MaterialApp(home: CashierScreen()),
+        ),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Weighing Item'), findsWidgets);
@@ -63,26 +74,38 @@ void main() {
       expect(find.text('Tare'), findsNothing);
       expect(find.text('Zero'), findsNothing);
       expect(find.byTooltip('Product Camera'), findsNothing);
-      expect(tester.getTopLeft(find.text('Cart is empty')).dy,
-          greaterThan(tester.getTopLeft(find.text('Unit price')).dy));
+      expect(
+        tester.getTopLeft(find.text('Cart is empty')).dy,
+        greaterThan(tester.getTopLeft(find.text('Unit price')).dy),
+      );
       final priceField = tester.widget<TextField>(find.byType(TextField).first);
       expect(priceField.controller!.text, '2.50');
       expect(find.byType(AlertDialog), findsNothing);
 
       await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Enable product camera'), 300, scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.text('Enable product camera'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Enable product camera'), findsOneWidget);
-      expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile).last).value, false);
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile).last).value,
+        false,
+      );
       await tester.tap(find.text('Enable product camera'));
       await tester.scrollUntilVisible(
-        find.text('Save Settings'), 300,
+        find.text('Save Settings'),
+        300,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('Save Settings'));
       await tester.pump();
       await tester.pageBack();
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
       await tester.pumpAndSettle();
       expect(find.byTooltip('Product Camera'), findsOneWidget);
 
@@ -100,13 +123,17 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
 
-      await tester.runAsync(() => DbService().insertMenuItem(const MenuItem(
-        nameEn: 'Test Item', price: 9, isByWeight: false,
-      )));
+      await tester.runAsync(
+        () => DbService().insertMenuItem(
+          const MenuItem(nameEn: 'Test Item', price: 9, isByWeight: false),
+        ),
+      );
       await tester.tap(find.byTooltip('Manage Menu'));
       await tester.pumpAndSettle();
       await tester.pageBack();
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Test Item').first);
       await tester.pump();
@@ -118,12 +145,75 @@ void main() {
       await tester.pump();
       expect(find.text('฿ 5.00'), findsWidgets);
 
+      // Recognition opt-in still permits checkout when camera hardware fails.
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Automatic recognition (offline)'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('Automatic recognition (offline)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Automatic recognition (offline)'));
+      await tester.pump();
+      expect(
+        tester
+            .widget<SwitchListTile>(
+              find.widgetWithText(
+                SwitchListTile,
+                'Automatic recognition (offline)',
+              ),
+            )
+            .value,
+        isTrue,
+      );
+      await tester.scrollUntilVisible(
+        find.text('Save Settings'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Save Settings'));
+      await tester.pump();
+      expect(
+        (await SharedPreferences.getInstance()).getBool('produce_auto_enabled'),
+        isTrue,
+      );
+      await tester.pageBack();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Camera unavailable or too dark. Manual checkout remains available.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Test Item').first);
+      await tester.tap(find.widgetWithText(FilledButton, '6'));
+      await tester.pump();
+      expect(priceField.controller!.text, '6');
+      expect(tester.takeException(), isNull);
       await tester.pump(const Duration(seconds: 3));
     } finally {
       await tester.pumpWidget(const SizedBox());
-      messenger.setMockMethodCallHandler(const MethodChannel('cashier/weight'), null);
-      messenger.setMockMethodCallHandler(const MethodChannel('presentation_displays_plugin'), null);
-      messenger.setMockMethodCallHandler(const MethodChannel('cashier/print'), null);
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('cashier/weight'),
+        null,
+      );
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('presentation_displays_plugin'),
+        null,
+      );
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('cashier/print'),
+        null,
+      );
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
       await tester.runAsync(() => directory!.delete(recursive: true));

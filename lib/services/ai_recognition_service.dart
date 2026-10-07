@@ -16,14 +16,19 @@ class AiRecognitionService {
   static const _channel = MethodChannel('cashier/ai_embedding');
 
   Future<List<double>> embedImage(String path) async {
-    final values = await _channel.invokeListMethod<num>('embedImage', {'path': path});
+    final values = await _channel
+        .invokeListMethod<num>('embedImage', {'path': path})
+        .timeout(const Duration(seconds: 15));
     if (values == null || values.isEmpty) {
       throw StateError('Image model returned no features');
     }
     return values.map((value) => value.toDouble()).toList();
   }
 
-  Future<List<AiMatch>> recognize(List<double> embedding, List<MenuItem> items) async {
+  Future<List<AiMatch>> recognize(
+    List<double> embedding,
+    List<MenuItem> items,
+  ) async {
     final samples = await DbService().visualSamples();
     return rank(embedding, samples, items);
   }
@@ -45,7 +50,8 @@ class AiRecognitionService {
       if (score > (best[itemId] ?? -2)) best[itemId] = score;
     }
     final matches = [
-      for (final entry in best.entries) AiMatch(available[entry.key]!, entry.value),
+      for (final entry in best.entries)
+        AiMatch(available[entry.key]!, entry.value),
     ]..sort((a, b) => b.similarity.compareTo(a.similarity));
     return matches.take(3).toList();
   }

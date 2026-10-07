@@ -2,7 +2,7 @@ name: cashier_trae
 description: "Offline cashier with weighing and receipt printing"
 publish_to: 'none'
 
-version: 1.2.3+11
+version: 1.3.0-dev.1+12
 
 environment:
   sdk: ^3.10.7

@@ -39,6 +39,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".visiondev"
+            versionNameSuffix = "-vision-dev"
+            ndk.abiFilters.add("arm64-v8a")
+        }
         release {
             // Website retains its legacy signer. Play candidates remain unsigned
             // until a production upload key is configured; never use a debug key.
@@ -64,4 +69,11 @@ dependencies {
 
 flutter {
     source = "../.."
+}
+
+// Keep test APK transport small without changing release packaging/signatures.
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.packaging.jniLibs.useLegacyPackaging.set(true)
+    }
 }

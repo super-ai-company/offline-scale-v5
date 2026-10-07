@@ -1,5 +1,7 @@
 # Offline Scale V5
 
+**This branch is a produce-recognition development candidate; v1.2.3 remains the stable release.** No cloud API is required. Recognition uses local samples and stable weight, with manual confirmation by default. See the [implementation and hardware acceptance plan](docs/FEIE-PLAN.md). Build a separate `.visiondev` test APK with `flutter build apk --debug --flavor website`; do not install a release candidate over production.
+
 Android scale checkout with **local menus, a permanent price keypad and receipt printing**. Weighing and compatible local printing work without a server account. Optional Feie Cloud printing requires internet.
 
 [中文](README.md) · [Printer compatibility](docs/PRINTERS.md) · [Feie integration](docs/FEIE-PLAN.md) · [Validation](docs/VALIDATION.md)

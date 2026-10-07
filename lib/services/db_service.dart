@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
@@ -40,7 +41,9 @@ class DbService {
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          await db.execute("ALTER TABLE menu_items ADD COLUMN name_en TEXT NOT NULL DEFAULT ''");
+          await db.execute(
+            "ALTER TABLE menu_items ADD COLUMN name_en TEXT NOT NULL DEFAULT ''",
+          );
         }
         if (oldVersion < 3) {
           await _seedDefaultMenuIfEmpty(db);
@@ -83,7 +86,10 @@ class DbService {
   }
 
   Future<MenuItem> insertMenuItem(MenuItem item) async {
-    final id = await (await db).insert('menu_items', item.toMap()..remove('id'));
+    final id = await (await db).insert(
+      'menu_items',
+      item.toMap()..remove('id'),
+    );
     return item.copyWith(id: id);
   }
 
@@ -99,9 +105,22 @@ class DbService {
   Future<void> deleteMenuItem(int id) async {
     final database = await db;
     await database.transaction((txn) async {
-      await txn.delete('visual_samples', where: 'menu_item_id = ?', whereArgs: [id]);
+      await txn.delete(
+        'visual_samples',
+        where: 'menu_item_id = ?',
+        whereArgs: [id],
+      );
       await txn.delete('menu_items', where: 'id = ?', whereArgs: [id]);
     });
+  }
+
+  Future<String> _visualModel() async {
+    final camera = (await SharedPreferences.getInstance()).getString(
+      'produce_camera_name',
+    );
+    return camera == null
+        ? 'mobilenet_v3_small_v1'
+        : 'mobilenet_v3_small_v1:camera:$camera';
   }
 
   Future<void> addVisualSample(int itemId, List<double> embedding) async {
@@ -110,7 +129,7 @@ class DbService {
     }
     await (await db).insert('visual_samples', {
       'menu_item_id': itemId,
-      'model': 'mobilenet_v3_small_v1',
+      'model': await _visualModel(),
       'embedding': jsonEncode(embedding),
       'created_at': DateTime.now().toUtc().toIso8601String(),
     });
@@ -120,11 +139,10 @@ class DbService {
     final rows = await (await db).rawQuery(
       'SELECT menu_item_id, COUNT(*) AS count FROM visual_samples '
       'WHERE model = ? GROUP BY menu_item_id',
-      ['mobilenet_v3_small_v1'],
+      [await _visualModel()],
     );
     return {
-      for (final row in rows)
-        row['menu_item_id'] as int: row['count'] as int,
+      for (final row in rows) row['menu_item_id'] as int: row['count'] as int,
     };
   }
 
@@ -133,16 +151,25 @@ class DbService {
       'visual_samples',
       columns: ['menu_item_id', 'embedding'],
       where: 'model = ?',
-      whereArgs: ['mobilenet_v3_small_v1'],
+      whereArgs: [await _visualModel()],
     );
-    return rows.map((row) => (
-      row['menu_item_id'] as int,
-      (jsonDecode(row['embedding'] as String) as List)
-          .map((value) => (value as num).toDouble()).toList(),
-    )).toList();
+    return rows
+        .map(
+          (row) => (
+            row['menu_item_id'] as int,
+            (jsonDecode(row['embedding'] as String) as List)
+                .map((value) => (value as num).toDouble())
+                .toList(),
+          ),
+        )
+        .toList();
   }
 
   Future<void> clearVisualSamples(int itemId) async {
-    await (await db).delete('visual_samples', where: 'menu_item_id = ?', whereArgs: [itemId]);
+    await (await db).delete(
+      'visual_samples',
+      where: 'menu_item_id = ?',
+      whereArgs: [itemId],
+    );
   }
 }

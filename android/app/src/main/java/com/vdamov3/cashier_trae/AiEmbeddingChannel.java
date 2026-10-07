@@ -35,6 +35,21 @@ public class AiEmbeddingChannel implements MethodChannel.MethodCallHandler {
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
+        if ("diagnosticsPath".equals(call.method)) {
+            boolean debug = (context.getApplicationInfo().flags
+                    & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+            if (debug && context.getPackageName().endsWith(".visiondev")) {
+                java.io.File directory = new java.io.File(context.getFilesDir(), "vision-diagnostics");
+                if (directory.isDirectory() || directory.mkdirs()) {
+                    result.success(directory.getAbsolutePath());
+                } else {
+                    result.error("DIAGNOSTICS_UNAVAILABLE", "Cannot open diagnostic directory", null);
+                }
+            } else {
+                result.error("DIAGNOSTICS_DISABLED", "Diagnostics are only available in the isolated debug app", null);
+            }
+            return;
+        }
         if (!"embedImage".equals(call.method)) {
             result.notImplemented();
             return;
