@@ -62,6 +62,7 @@ class _CashierScreenState extends State<CashierScreen> {
   bool _cameraPaused = false;
   bool _selectedByCamera = false;
   bool _recognitionLocked = false;
+  bool _trayHadLoad = false;
   final _autoCameraKey = GlobalKey<AutoProducePanelState>();
   ProduceDiagnosticService? _diagnostics;
   int _fixedQty = 1;
@@ -363,8 +364,22 @@ class _CashierScreenState extends State<CashierScreen> {
           setState(() {
             if (data.valid &&
                 data.unit.toLowerCase() == 'kg' &&
+                data.kg > .005) {
+              if (!_trayHadLoad &&
+                  _productCameraEnabled &&
+                  _autoRecognition &&
+                  !_recognitionLocked) {
+                _selectedItem = MenuItem.quickWeigh;
+                _setPriceText(_defaultPrice);
+                _selectedByCamera = false;
+              }
+              _trayHadLoad = true;
+            }
+            if (data.valid &&
+                data.unit.toLowerCase() == 'kg' &&
                 data.kg <= .005) {
-              _recognitionLocked = false;
+              if (_trayHadLoad) _recognitionLocked = false;
+              _trayHadLoad = false;
               if (_selectedByCamera) {
                 _selectedItem = MenuItem.quickWeigh;
                 _setPriceText(_defaultPrice);
@@ -496,7 +511,6 @@ class _CashierScreenState extends State<CashierScreen> {
 
   void _addToCart(LocaleProvider lp) {
     _autoCameraKey.currentState?.manualOverride();
-    _selectedByCamera = false;
     _recognitionLocked = true;
     if (_selectedItem == null || _printing) return;
     final item = _selectedItem!;

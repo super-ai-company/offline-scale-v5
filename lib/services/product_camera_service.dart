@@ -1,22 +1,49 @@
 import 'dart:io';
+import 'dart:async';
 import 'ai_recognition_service.dart';
 import 'package:camera/camera.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductCameraService {
-  static Future<List<double>> captureEmbedding() async {
+  static Future<CameraController> open() async {
+    final camera = await select().timeout(const Duration(seconds: 5));
     final controller = CameraController(
-      await select(),
+      camera,
       ResolutionPreset.medium,
       enableAudio: false,
     );
+    try {
+      await controller.initialize().timeout(const Duration(seconds: 10));
+      return controller;
+    } catch (_) {
+      unawaited(close(controller));
+      rethrow;
+    }
+  }
+
+  /// A faulty/disconnected accessory must not hold cashier navigation hostage.
+  /// SDK disposal continues even when the UI's bounded wait expires.
+  static Future<void> close(
+    CameraController controller, {
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    try {
+      await controller.dispose().timeout(timeout);
+    } catch (_) {
+      /* Cleanup must never disable manual checkout. */
+    }
+  }
+
+  static Future<List<double>> captureEmbedding() async {
+    final controller = await open();
     String? path;
     try {
-      await controller.initialize();
-      path = (await controller.takePicture()).path;
+      path = (await controller.takePicture().timeout(
+        const Duration(seconds: 12),
+      )).path;
       return await AiRecognitionService().embedImage(path);
     } finally {
-      await controller.dispose();
+      await close(controller);
       if (path != null) {
         try {
           await File(path).delete();

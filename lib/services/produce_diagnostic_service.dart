@@ -112,7 +112,9 @@ class ProduceDiagnosticService {
           data = {
             'code': 'ok',
             'cameras': [
-              for (final c in await availableCameras())
+              for (final c in await availableCameras().timeout(
+                const Duration(seconds: 5),
+              ))
                 {
                   'name': c.name,
                   'lens_direction': c.lensDirection.name,

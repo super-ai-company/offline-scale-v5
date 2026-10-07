@@ -74,17 +74,25 @@ class ProduceScanCycle {
   int generation = 0;
   bool locked = false;
   double? _kg;
+  bool _hasLoad = false;
   DateTime? _stableSince;
   int? _candidate;
   int _confirmations = 0;
 
   void update(double kg, bool ready, DateTime now) {
-    if (!kg.isFinite || kg <= .005) {
-      if (_kg != null || locked) invalidate();
-      locked = false;
+    if (!kg.isFinite) {
+      invalidate();
       _kg = null;
       return;
     }
+    if (kg <= .005) {
+      if (_kg != null || _hasLoad) invalidate();
+      if (_hasLoad) locked = false;
+      _hasLoad = false;
+      _kg = null;
+      return;
+    }
+    _hasLoad = true;
     if (!ready || _kg == null || (kg - _kg!).abs() > .002) {
       invalidate();
       _kg = kg;

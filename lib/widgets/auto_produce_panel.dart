@@ -63,32 +63,30 @@ class AutoProducePanelState extends State<AutoProducePanel>
   @override
   void initState() {
     super.initState();
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _foreground = lifecycle == null || lifecycle == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     if (widget.selectionLocked) {
       cycle.manualOverride();
       _status = 'manual';
     }
-    _opening = _open();
+    if (_foreground) {
+      _opening = _open();
+    }
     _timer = Timer.periodic(const Duration(milliseconds: 700), (_) => _tick());
   }
 
   Future<void> _open() async {
     final epoch = ++_cameraEpoch;
     try {
-      final camera = await ProductCameraService.select();
+      final controller = await ProductCameraService.open();
       _fixedCamera =
           (await SharedPreferences.getInstance()).getString(
             'produce_camera_name',
           ) !=
           null;
-      final controller = CameraController(
-        camera,
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
-      await controller.initialize();
       if (!mounted || _stopped || !_foreground || epoch != _cameraEpoch) {
-        await controller.dispose();
+        await ProductCameraService.close(controller);
         return;
       }
       setState(() {
@@ -120,10 +118,16 @@ class AutoProducePanelState extends State<AutoProducePanel>
     _cameraEpoch++;
     cycle.invalidate();
     _timer?.cancel();
-    await _opening;
+    try {
+      await _opening?.timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      /* Late initialization sees the invalid epoch and cleans up. */
+    }
     final camera = _camera;
     _camera = null;
-    await camera?.dispose();
+    if (camera != null) {
+      await ProductCameraService.close(camera);
+    }
   }
 
   @override
@@ -140,7 +144,9 @@ class AutoProducePanelState extends State<AutoProducePanel>
       final pending = _opening;
       _opening = () async {
         await pending;
-        await camera?.dispose();
+        if (camera != null) {
+          await ProductCameraService.close(camera);
+        }
       }();
     } else if (!_stopped) {
       final pending = _opening;
@@ -159,6 +165,10 @@ class AutoProducePanelState extends State<AutoProducePanel>
   @override
   void didUpdateWidget(AutoProducePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectionLocked && !widget.selectionLocked) {
+      cycle.invalidate();
+      cycle.locked = false;
+    }
     if (widget.selectionLocked && !cycle.locked) {
       cycle.manualOverride();
     }
@@ -201,7 +211,9 @@ class AutoProducePanelState extends State<AutoProducePanel>
         _status = 'scanning';
         _cameraFailed = false;
       });
-      path = (await camera.takePicture()).path;
+      path = (await camera.takePicture().timeout(
+        const Duration(seconds: 12),
+      )).path;
       final embedding = await AiRecognitionService().embedImage(path);
       final samples = await DbService().visualSamples();
       final decision = const ProduceRecognitionPolicy().evaluate(
@@ -226,7 +238,7 @@ class AutoProducePanelState extends State<AutoProducePanel>
                   ? (widget.autoSelect && !_fixedCamera
                         ? 'needs_camera'
                         : 'confirm')
-                  : 'scanning')
+                  : (_attempts >= 4 ? 'confirm' : 'scanning'))
             : decision.code;
       });
       if (consistent && widget.autoSelect && _fixedCamera) {

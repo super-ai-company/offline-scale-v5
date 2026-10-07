@@ -519,7 +519,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: Text(lp.tr('produce_find_cameras')),
                       onPressed: () async {
                         try {
-                          final cameras = await availableCameras();
+                          final cameras = await availableCameras().timeout(
+                            const Duration(seconds: 5),
+                          );
                           if (mounted) setState(() => _cameras = cameras);
                           if (cameras.isEmpty && context.mounted) {
                             TopToast.show(

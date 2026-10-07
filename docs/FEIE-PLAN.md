@@ -75,7 +75,7 @@ Fix the camera toward the tray. Start with a small confirmed catalogue; use one 
 - 重量变化、失联、后台、导航和人工改单价使在途识别作废；人工选择后锁住本次周期，商品移走后重置。已由摄像头选择的商品在新周期清除，避免沿用上次价格。
 - 用户已确认当前镜头朝天、后续可以加配件，本轮硬件仅验收接入与界面，不把朝天画面作为商品准确率证据。
 - 设置支持检测、固定选择商品摄像头；采样与自动识别共用所选镜头。固定配件断开时拒绝自动切到另一镜头，保留人工收银。按所选镜头隔离样本特征，换镜头需要重新采样；不删除旧镜头样本。自动选择还要求固定选择镜头。
-- 设置、采样和自动预览切换前释放摄像头；错误保留手动收银。中文、英文、泰文提示完整。
+- 设置、采样和自动预览切换前释放摄像头；错误保留手动收银。摄像头枚举、初始化、拍摄、特征提取和关闭均限制等待；断开的配件不能无限阻止进入设置/商品管理。中文、英文、泰文提示完整。
 - Android debug 包针对本次 ARM64 RK3568 设备、压缩原生库，使用 `.visiondev` 独立安装标识；独立数据库和设置，正式版不被覆盖。不要使用 release 构建覆盖正式版做本阶段测试。
 - `ProduceRecognitionPolicy.evaluate()` 提供可复用判定接口；`ProduceDecision.toJson()` 提供 code、候选 id、相似度和单价。`ProduceScanCycle` 可单独测试重量状态、连续帧和过期结果。
 
@@ -108,3 +108,7 @@ Capture diverse samples, then evaluate independent real produce and unknown obje
 - `{"action":"replay","embedding":[1.0,0.0]}`：用指定特征重放当前镜头样本的判定（维度必须匹配真实模型）。输出 `accepted/unknown/ambiguous/needs_samples/no_samples` 等 code，score 不等于准确率。
 
 命令接口不提供打印、付款或生产数据修改；正式 APK 拒绝 diagnosticsPath。`capture_sample` 接口不允许创建商品或价格，防止测试数据污染真实菜单。
+
+手动预选商品或输入单价可在放货前锁定，空盘连续零读数不会解锁；放货后真正清空秤盘才开启下一轮识别。新一轮放货先清除上一轮的识别结果，未知商品仍需手动选择。摄像头初始化、拍照、特征计算和释放均有等待上限；四帧不一致转人工确认。
+
+Manual preselection survives empty-tray readings until a real load is removed. A fresh load clears stale camera selection; unknown products require confirmation. Camera operations have bounded waits; four inconsistent frames fall back to manual confirmation. Hardware tests should run one cashier/serial-reader app at a time; keep the production app installed.

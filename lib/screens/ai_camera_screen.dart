@@ -29,15 +29,9 @@ class _AiCameraScreenState extends State<AiCameraScreen> {
 
   Future<void> _open() async {
     try {
-      final camera = await ProductCameraService.select();
-      final controller = CameraController(
-        camera,
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
-      await controller.initialize();
+      final controller = await ProductCameraService.open();
       if (!mounted) {
-        await controller.dispose();
+        await ProductCameraService.close(controller);
         return;
       }
       setState(() => _controller = controller);
@@ -55,7 +49,9 @@ class _AiCameraScreenState extends State<AiCameraScreen> {
     });
     String? path;
     try {
-      final image = await controller.takePicture();
+      final image = await controller.takePicture().timeout(
+        const Duration(seconds: 12),
+      );
       path = image.path;
       final embedding = await AiRecognitionService().embedImage(path);
       if (mounted) Navigator.pop(context, embedding);
@@ -83,7 +79,8 @@ class _AiCameraScreenState extends State<AiCameraScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    final controller = _controller;
+    if (controller != null) ProductCameraService.close(controller);
     super.dispose();
   }
 

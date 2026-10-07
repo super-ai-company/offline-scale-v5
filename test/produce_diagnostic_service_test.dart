@@ -56,8 +56,9 @@ void main() {
           try {
             final response =
                 jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-            if (response['request_id'] == request['request_id'])
+            if (response['request_id'] == request['request_id']) {
               return response;
+            }
           } on FormatException {
             /* Atomic reply may be between writes. */
           }

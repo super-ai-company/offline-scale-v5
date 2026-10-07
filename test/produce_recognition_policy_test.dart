@@ -116,4 +116,17 @@ void main() {
     cycle.update(.7, false, now);
     expect(cycle.ready(now.add(const Duration(seconds: 3))), isFalse);
   });
+  test('manual preselection stays locked until a real load is removed', () {
+    final cycle = ProduceScanCycle()..manualOverride();
+    final now = DateTime(2026);
+    cycle.update(0, true, now);
+    cycle.update(0, true, now);
+    expect(cycle.locked, isTrue);
+    cycle.update(.7, true, now);
+    expect(cycle.locked, isTrue);
+    cycle.update(double.nan, true, now);
+    expect(cycle.locked, isTrue);
+    cycle.update(0, true, now);
+    expect(cycle.locked, isFalse);
+  });
 }
